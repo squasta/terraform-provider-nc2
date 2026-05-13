@@ -34,6 +34,18 @@ and trivially reasoned about in the framework's plan/apply loop.
   attribute after each Read.
 - `func ReadHibernatingCluster` — AWS convenience wrapper around
   `ReadCluster` that runs `DeriveDesiredStateIfUnset` afterwards.
+- `const MinClusterHosts = 1`, `MinProductionClusterHosts = 3`,
+  `MaxClusterHosts = 28` — the NC2 cluster sizing rule.
+- `func AllowedClusterHostCounts() []int`,
+  `func IsAllowedClusterHostCount(int) bool` — pure helpers
+  exposing the allowed totals (1, then 3..28 inclusive — never 2).
+- `func ValidateCapacityHostCount(types.List) diag.Diagnostics`
+  — plan-time validator called from each cluster resource's
+  `ValidateConfig`. Emits per-element diagnostics for parse
+  failures / `< 1` values, plus an aggregate diagnostic when the
+  sum of all known `number_of_hosts` violates the rule. Skips the
+  aggregate when any element is unknown so it never produces a
+  false positive on partially-computed plans.
 
 ## Update routing precedence (data-model.md §4)
 

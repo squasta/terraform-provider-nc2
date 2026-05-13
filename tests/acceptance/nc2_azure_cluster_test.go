@@ -44,7 +44,7 @@ resource "nc2_azure_cluster" "target" {
   aos_version         = "6.7"
   software_tier       = "pro"
 
-  capacity   = [{ host_type = "Standard_D32s_v4", number_of_hosts = "3" }]
+  capacity   = [{ host_type = "AN36P", number_of_hosts = "3" }]
   redundancy = { factor = "1" }
   network    = {
     mode              = "new"

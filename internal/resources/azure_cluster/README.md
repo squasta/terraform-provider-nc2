@@ -16,6 +16,17 @@ through Terraform (NC2 does not currently support hibernate on
 Azure-hosted clusters in a way the provider can model
 deterministically — FR-012).
 
+## `capacity[*].host_type` validation
+
+NC2 on Azure provisions only Nutanix bare-metal `AN`-series hosts.
+The supported set is enumerated in `validate.go` (currently
+`AN36P` and `AN64`) and exported via `AllowedHostTypes()`. The
+`ValidateConfig` method rejects any other value at plan time with
+one diagnostic per offending element of the `capacity` list,
+naming both the bad value and the allowed set. The validator is a
+pure function (`validateCapacityHostTypes`) and is unit-tested in
+`validate_test.go`.
+
 ## Lifecycle
 
 - **Create** — `POST /clusters/azure` + task polling.

@@ -22,9 +22,12 @@ resource "nc2_azure_cluster" "demo" {
   aos_version         = "6.7"
   software_tier       = "pro"
 
+  # NC2 on Azure only supports the AN36P and AN64 bare-metal SKUs
+  # as cluster hosts. Any other Azure VM size is rejected at plan
+  # time with a per-element diagnostic.
   capacity = [
     {
-      host_type       = "Standard_D32s_v4"
+      host_type       = "AN36P"
       number_of_hosts = "3"
     },
   ]

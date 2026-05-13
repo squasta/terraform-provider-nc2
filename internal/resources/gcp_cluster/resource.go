@@ -141,8 +141,23 @@ func (r *gcpClusterResource) ImportState(ctx context.Context, req resource.Impor
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 }
 
+// ValidateConfig enforces NC2 cluster sizing rules at plan time:
+// the sum of `capacity[*].number_of_hosts` MUST be 1 or 3..28
+// inclusive (a 2-host cluster has no quorum). The per-element and
+// aggregate checks live in `clustershared.ValidateCapacityHostCount`
+// and are shared by every cloud's cluster resource.
+func (r *gcpClusterResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var cfg model
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(clustershared.ValidateCapacityHostCount(cfg.Capacity)...)
+}
+
 var (
-	_ resource.Resource                = &gcpClusterResource{}
-	_ resource.ResourceWithConfigure   = &gcpClusterResource{}
-	_ resource.ResourceWithImportState = &gcpClusterResource{}
+	_ resource.Resource                   = &gcpClusterResource{}
+	_ resource.ResourceWithConfigure      = &gcpClusterResource{}
+	_ resource.ResourceWithImportState    = &gcpClusterResource{}
+	_ resource.ResourceWithValidateConfig = &gcpClusterResource{}
 )

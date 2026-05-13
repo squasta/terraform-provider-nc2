@@ -191,7 +191,7 @@ Terraform Update operates only on `active` organizations. Terminate (Delete) mov
 | `license` | String | Required | – (in-place via `update-license`) | false | request: `data.license` | one of `aos`, `prism-pro`, ... (enum from OpenAPI) |
 | `aos_version` | String | Required | – (in-place via `update-license`) | false | request: `data.aos_version` | matches `^\d+\.\d+(\.\d+)?$` |
 | `software_tier` | String | Required | – (in-place via `update-license`) | false | request: `data.software_tier` | enum per OpenAPI |
-| `capacity` | List<Object{host_type, number_of_hosts, node_type?, advanced_settings?}> | Required | – (in-place via `update-capacity`) | false | request: `data.capacity` | 1 ≤ len ≤ N; per-element host_type non-empty, number_of_hosts ≥ 1 |
+| `capacity` | List<Object{host_type, number_of_hosts, node_type?, advanced_settings?}> | Required | – (in-place via `update-capacity`) | false | request: `data.capacity` | 1 ≤ len; per-element host_type non-empty, number_of_hosts ≥ 1; **sum(capacity[*].number_of_hosts) ∈ {1} ∪ [3, 28]** — a 2-host cluster has no quorum and is rejected at plan time (validator: `clustershared.ValidateCapacityHostCount`) |
 | `redundancy` | Object{factor: Int64} | Required | RequiresReplace | false | request: `data.redundancy` | factor ∈ {1, 2} |
 | `network` | Object{...} | Required | RequiresReplace (with field-level exceptions) | false | request: `data.network` | shape per OpenAPI |
 | `network.mode` | String | Required | RequiresReplace | false | request: `data.network.mode` | one of `new`, `existing` |

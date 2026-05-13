@@ -141,8 +141,32 @@ func (r *azureClusterResource) ImportState(ctx context.Context, req resource.Imp
 	resp.Diagnostics.Append(resp.State.SetAttribute(ctx, path.Root("id"), req.ID)...)
 }
 
+// ValidateConfig enforces NC2-on-Azure-specific constraints that
+// are not expressible via plain schema attributes:
+//
+//   - Every `capacity[*].host_type` must be one of the supported
+//     bare-metal SKUs (see AllowedHostTypes — currently AN36P and
+//     AN64). This is checked at plan time so the operator sees the
+//     error before any API call is made.
+//   - The sum of `capacity[*].number_of_hosts` must be 1 or 3..28
+//     inclusive (shared `clustershared.ValidateCapacityHostCount`,
+//     applied identically on AWS / Azure / GCP).
+//
+// The checks run against the user's configuration; computed and
+// unknown values are skipped (they cannot be inspected pre-apply).
+func (r *azureClusterResource) ValidateConfig(ctx context.Context, req resource.ValidateConfigRequest, resp *resource.ValidateConfigResponse) {
+	var cfg model
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	resp.Diagnostics.Append(validateCapacityHostTypes(cfg.Capacity)...)
+	resp.Diagnostics.Append(clustershared.ValidateCapacityHostCount(cfg.Capacity)...)
+}
+
 var (
-	_ resource.Resource                = &azureClusterResource{}
-	_ resource.ResourceWithConfigure   = &azureClusterResource{}
-	_ resource.ResourceWithImportState = &azureClusterResource{}
+	_ resource.Resource                     = &azureClusterResource{}
+	_ resource.ResourceWithConfigure        = &azureClusterResource{}
+	_ resource.ResourceWithImportState      = &azureClusterResource{}
+	_ resource.ResourceWithValidateConfig   = &azureClusterResource{}
 )

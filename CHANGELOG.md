@@ -18,6 +18,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   carries the `DesiredState` field — AWS embeds the new
   `clustershared.HibernatingModel` instead, which adds the
   attribute back.
+- **BREAKING (pre-1.0)**: `nc2_azure_cluster` now rejects any
+  `capacity[*].host_type` outside the supported NC2-on-Azure
+  bare-metal SKUs (`AN36P`, `AN64`) at plan time via
+  `ValidateConfig`. Existing configurations referencing generic
+  Azure VM sizes (e.g. `Standard_D32s_v4`) or AWS-style SKUs must
+  be updated; previous releases would have surfaced the failure
+  only at apply time as an opaque NC2 API error.
+- All three cluster resources (`nc2_aws_cluster`,
+  `nc2_azure_cluster`, `nc2_gcp_cluster`) now reject unsupported
+  cluster sizes at plan time. The sum of
+  `capacity[*].number_of_hosts` must equal `1` or fall in `3..28`
+  inclusive — a 2-host cluster (no quorum) and totals `0` or
+  `> 28` are rejected with an attribute-rooted diagnostic. The
+  per-element / aggregate validator lives in
+  `internal/resources/clustershared/ValidateCapacityHostCount` so
+  the three resources cannot drift.
 
 ### Added
 

@@ -36,3 +36,19 @@ resource "nc2_gcp_cluster" "demo" {
 Same shape as `nc2_aws_cluster` minus `access_policy`. GCP-specific
 network attributes (`project_id`, `vpc_name`) live inside `network`
 as Map<String,String> entries.
+
+### `capacity[*].number_of_hosts` constraint
+
+Across every cloud, NC2 only supports the following cluster sizes:
+
+| `sum(capacity[*].number_of_hosts)` | Supported? |
+|---|---|
+| `1` | yes (single-host cluster) |
+| `2` | **no** — a 2-host cluster has no quorum / metadata-redundancy story and is rejected by NC2 |
+| `3` to `28` (inclusive) | yes (production cluster sizes) |
+| `0` or `> 28` | no |
+
+The check runs in `ValidateConfig` (no API call is issued for an
+invalid plan) and is implemented once in
+`internal/resources/clustershared/ValidateCapacityHostCount` so AWS,
+Azure, and GCP cluster resources cannot drift apart.
