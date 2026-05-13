@@ -1,0 +1,98 @@
+## Acceptance tests — runs nightly and on demand.
+##
+## Per task T007 and FR-023..FR-026: provisions REAL NC2 resources, incurs
+## cloud spend, and so is gated by repository secrets and never runs on a
+## normal pull request. Triggered:
+##   - On a daily cron schedule (03:00 UTC).
+##   - On manual workflow_dispatch (any branch, any user with workflow:write).
+##
+## The job is automatically skipped (rather than failing) if the required
+## secrets are not configured, so a fresh fork can be CI-clean.
+
+name: Acceptance
+
+on:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git ref to test (default: default branch)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: acceptance-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  testacc:
+    name: terraform-plugin-testing acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Resolve ref
+        id: resolve
+        run: |
+          echo "ref=${{ github.event.inputs.ref || github.ref }}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.resolve.outputs.ref }}
+          fetch-depth: 1
+
+      - name: Check required secrets are present
+        id: secretcheck
+        env:
+          NC2_API_KEY: ${{ secrets.NC2_API_KEY }}
+          NC2_KEY_ID: ${{ secrets.NC2_KEY_ID }}
+          NC2_ISSUER: ${{ secrets.NC2_ISSUER }}
+        run: |
+          missing=()
+          [ -z "$NC2_API_KEY" ] && missing+=("NC2_API_KEY")
+          [ -z "$NC2_KEY_ID" ] && missing+=("NC2_KEY_ID")
+          [ -z "$NC2_ISSUER" ] && missing+=("NC2_ISSUER")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "SKIP=1" >> "$GITHUB_OUTPUT"
+            echo "::warning::Required secrets missing (${missing[*]}); acceptance tests will be skipped."
+          else
+            echo "SKIP=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Skip notice
+        if: steps.secretcheck.outputs.SKIP == '1'
+        run: echo "Acceptance tests skipped — configure NC2_API_KEY, NC2_KEY_ID, NC2_ISSUER secrets to enable."
+
+      - uses: actions/setup-go@v5
+        if: steps.secretcheck.outputs.SKIP == '0'
+        with:
+          go-version: "1.26.x"
+          cache: true
+
+      - uses: hashicorp/setup-terraform@v3
+        if: steps.secretcheck.outputs.SKIP == '0'
+        with:
+          terraform_version: "1.9.x"
+          terraform_wrapper: false
+
+      - name: Run acceptance suite
+        if: steps.secretcheck.outputs.SKIP == '0'
+        env:
+          TF_ACC: "1"
+          NC2_API_KEY: ${{ secrets.NC2_API_KEY }}
+          NC2_KEY_ID: ${{ secrets.NC2_KEY_ID }}
+          NC2_ISSUER: ${{ secrets.NC2_ISSUER }}
+        run: make testacc
+
+      - name: Upload acceptance logs
+        if: always() && steps.secretcheck.outputs.SKIP == '0'
+        uses: actions/upload-artifact@v4
+        with:
+          name: acceptance-logs
+          path: |
+            tests/acceptance/*.log
+            tests/acceptance/**/*.tfstate*
+          if-no-files-found: ignore

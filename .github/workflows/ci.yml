@@ -1,0 +1,112 @@
+## CI — runs on every pull request and on every push to main.
+##
+## Per task T006: gates the build on `make lint`, `make test`, `make coverage`,
+## `make openapi-coverage`, `make sensitive-lint-strict`, `make vuln`.
+##
+## Matrix: the latest two supported Go majors. plan.md/T006 originally
+## documented "Go 1.24 and 1.23"; 1.23 reached end-of-life shortly after that,
+## so the matrix is bumped here to 1.24 (project minimum from go.mod) plus
+## the current stable (1.26). Adjust as new Go versions ship.
+
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit:
+    name: Unit (Go ${{ matrix.go }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ["1.24.x", "1.26.x"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go }}
+          cache: true
+
+      - name: Install Go-installable tools
+        run: make tools
+
+      - name: go vet
+        run: make vet
+
+      - name: Lint (golangci-lint)
+        run: make lint
+
+      - name: Unit tests (-race)
+        run: make test
+
+      - name: Coverage gate (SC-005, >=80%)
+        run: make coverage
+
+      - name: Upload coverage profile
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-${{ matrix.go }}
+          path: coverage.out
+          if-no-files-found: ignore
+
+  openapi-coverage:
+    name: OpenAPI coverage (FR-021)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+      - name: Run coverage gate
+        run: make openapi-coverage
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: openapi-coverage-report
+          path: tools/coverage-check/output/coverage-report.json
+          if-no-files-found: ignore
+
+  sensitive-lint:
+    name: Sensitive-field lint (FR-002a)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+      - name: Strict sensitive-field lint
+        run: make sensitive-lint-strict
+
+  vuln:
+    name: Vulnerability scan (FR-032a)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26.x"
+          cache: true
+      - name: Install scanners
+        run: make tools
+      - name: govulncheck + osv-scanner
+        run: make vuln

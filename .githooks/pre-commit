@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# pre-commit hook for terraform-provider-nc2 — per task T009.
+#
+# Constitution Principle II (TDD, NON-NEGOTIABLE): every behavior change ships
+# with a corresponding test in the same diff. Running the test suite locally
+# before each commit makes a red test impossible to push.
+#
+# Install once:
+#
+#     git config core.hooksPath .githooks
+#
+# Skip occasionally (use sparingly; CI will still run):
+#
+#     git commit --no-verify
+#
+# Behavior:
+#   1. gofmt check (no in-place rewrite; fails if anything is unformatted).
+#   2. go vet ./...
+#   3. go test -race -count=1 ./...
+#
+# The script intentionally does NOT run golangci-lint (slow) or coverage gates
+# (slow) — those live in CI. The local hook protects against breaking the test
+# suite, which is the principle's hard guarantee.
+
+set -euo pipefail
+
+# Discover repo root (the hook runs from .git/hooks or .githooks).
+REPO_ROOT=$(git rev-parse --show-toplevel)
+cd "$REPO_ROOT"
+
+# Skip if Go is missing (e.g., CI image without Go); CI will catch it.
+if ! command -v go >/dev/null 2>&1; then
+  echo "[pre-commit] WARNING: 'go' not in PATH; skipping checks." >&2
+  exit 0
+fi
+
+# 1. gofmt — fail if any staged Go file is unformatted.
+unformatted=$(gofmt -l . | grep -v '^vendor/' || true)
+if [ -n "$unformatted" ]; then
+  echo "[pre-commit] ERROR: the following files need 'gofmt -s -w':" >&2
+  echo "$unformatted" >&2
+  echo "Run 'make fmt' to fix." >&2
+  exit 1
+fi
+
+# 2. go vet
+echo "[pre-commit] go vet ./..."
+go vet ./...
+
+# 3. go test with race detector
+echo "[pre-commit] go test -race -count=1 ./..."
+go test -race -count=1 ./...
+
+echo "[pre-commit] OK"

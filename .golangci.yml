@@ -1,0 +1,127 @@
+# golangci-lint configuration for terraform-provider-nc2.
+#
+# Per task T005 + Constitution Principle II + Principle III + SC-007:
+#   - errcheck       : catch unchecked errors (Functional Patterns: surface errors)
+#   - govet          : standard correctness checks
+#   - staticcheck    : the high-signal static-analysis suite
+#   - revive         : style + the `exported` rule required by SC-007
+#                      (every exported Go symbol MUST have a doc comment)
+#   - paralleltest   : every test must call t.Parallel() unless explicitly opted out
+#   - tparallel      : detect t.Parallel() misuse
+#   - gosec          : security-relevant lints (FR-003b, FR-002 etc.)
+#   - unparam        : detect unused function parameters
+#
+# Additional important enforcers chosen here:
+#   - copyloopvar    : Go 1.22+ loop-variable safety
+#   - gosimple       : standard simplifications
+#   - ineffassign    : detect ineffectual assignments
+#   - misspell       : spelling in comments / strings
+#   - revive `exported` rule        — SC-007
+#   - revive `package-comments` rule — every package has a doc comment
+#
+# `noinlineerr` and similar style-only linters are intentionally NOT enabled to
+# keep the signal-to-noise ratio high.
+
+version: "2"
+
+run:
+  timeout: 5m
+  go: "1.24"
+  tests: true
+  build-tags:
+    - tools
+    - acceptance
+
+linters:
+  default: none
+  enable:
+    - copyloopvar
+    - errcheck
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - paralleltest
+    - revive
+    - staticcheck
+    - tparallel
+    - unparam
+    - unused
+
+  settings:
+    revive:
+      enable-all-rules: false
+      rules:
+        - name: exported
+          severity: error
+          arguments:
+            - "checkPrivateReceivers"
+            - "sayRepetitiveInsteadOfStutters"
+        - name: package-comments
+          severity: error
+        - name: var-naming
+          severity: warning
+        - name: error-return
+          severity: warning
+        - name: error-naming
+          severity: warning
+        - name: if-return
+          severity: warning
+        - name: receiver-naming
+          severity: warning
+        - name: indent-error-flow
+          severity: warning
+        - name: empty-block
+          severity: warning
+        - name: superfluous-else
+          severity: warning
+        - name: range
+          severity: warning
+        - name: errorf
+          severity: warning
+        - name: unreachable-code
+          severity: warning
+
+    gosec:
+      # FR-003b: never disable TLS verification. G402 catches InsecureSkipVerify=true.
+      # FR-001b: rule G101 catches hardcoded credentials (defense in depth).
+      excludes: []
+      severity: low
+      confidence: low
+      config:
+        global:
+          audit: enabled
+
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+
+    paralleltest:
+      ignore-missing: false
+      ignore-missing-subtests: false
+
+  exclusions:
+    rules:
+      # Generated openapi-mapping files are tool-driven boilerplate; skip exported rule there.
+      - path: "internal/.*/openapi_mapping\\.go"
+        linters:
+          - revive
+      # Tools are CLI binaries; package-comments rule is verbose for main packages.
+      - path: "tools/.*/main\\.go"
+        linters:
+          - revive
+        text: "package-comments"
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofumpt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/nutanix/terraform-provider-nc2
