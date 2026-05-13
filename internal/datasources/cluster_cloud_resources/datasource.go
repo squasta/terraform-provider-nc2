@@ -1,0 +1,117 @@
+// Package cluster_cloud_resources implements
+// data.nc2_cluster_cloud_resources.
+package cluster_cloud_resources //nolint:revive,staticcheck
+
+import (
+	"context"
+	"fmt"
+
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
+
+	"github.com/nutanix/terraform-provider-nc2/internal/client"
+	"github.com/nutanix/terraform-provider-nc2/internal/datasources/dsshared"
+)
+
+// NewDataSource is the framework-facing constructor.
+func NewDataSource() datasource.DataSource { return &ccrDS{} }
+
+type ccrDS struct{ c *client.Client }
+
+type model struct {
+	ClusterID      types.String `tfsdk:"cluster_id"`
+	CloudResources types.List   `tfsdk:"cloud_resources"`
+}
+
+// Metadata returns the data source type name.
+func (d *ccrDS) Metadata(_ context.Context, _ datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "nc2_cluster_cloud_resources"
+}
+
+// Schema is the framework schema.
+func (d *ccrDS) Schema(_ context.Context, _ datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Description: "Lists every cloud resource NC2 created on behalf of the cluster. Sorted ascending by id (FR-015).",
+		Attributes: map[string]schema.Attribute{
+			"cluster_id": schema.StringAttribute{Required: true, Description: "Parent cluster UUID."},
+			"cloud_resources": schema.ListNestedAttribute{
+				Computed: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"id":   schema.StringAttribute{Computed: true, Description: "Cloud resource id."},
+						"type": schema.StringAttribute{Computed: true, Description: "Cloud-specific resource type."},
+						"name": schema.StringAttribute{Computed: true, Description: "Resource name."},
+					},
+				},
+			},
+		},
+	}
+}
+
+// Configure extracts the wired-up NC2 client from the runtime bundle.
+func (d *ccrDS) Configure(_ context.Context, req datasource.ConfigureRequest, resp *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+	rt, ok := req.ProviderData.(dsshared.RuntimeAccessor)
+	if !ok {
+		resp.Diagnostics.AddError("nc2_cluster_cloud_resources Configure", fmt.Sprintf("unexpected ProviderData type %T", req.ProviderData))
+		return
+	}
+	d.c = rt.NC2Client()
+}
+
+// Read calls GET /clusters/{cluster_id}/cloud-resources.
+func (d *ccrDS) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	if d.c == nil {
+		return
+	}
+	var cfg model
+	resp.Diagnostics.Append(req.Config.Get(ctx, &cfg)...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	rsp, err := d.c.Do(ctx, client.Request{
+		Method:      "GET",
+		Path:        "/clusters/" + cfg.ClusterID.ValueString() + "/cloud-resources",
+		TerraformOp: "data.nc2_cluster_cloud_resources.Read",
+	})
+	if err != nil {
+		resp.Diagnostics.AddError("nc2_cluster_cloud_resources Read", err.Error())
+		return
+	}
+	items := dsshared.ExtractList(rsp.Body)
+	dsshared.SortByID(items)
+	objType := types.ObjectType{AttrTypes: map[string]attr.Type{
+		"id":   types.StringType,
+		"type": types.StringType,
+		"name": types.StringType,
+	}}
+	values := make([]attr.Value, 0, len(items))
+	for _, it := range items {
+		v, diag := types.ObjectValue(objType.AttrTypes, map[string]attr.Value{
+			"id":   types.StringValue(dsshared.StringOrEmpty(it["id"])),
+			"type": types.StringValue(dsshared.StringOrEmpty(it["type"])),
+			"name": types.StringValue(dsshared.StringOrEmpty(it["name"])),
+		})
+		resp.Diagnostics.Append(diag...)
+		values = append(values, v)
+	}
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	listVal, diag := types.ListValue(objType, values)
+	resp.Diagnostics.Append(diag...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+	cfg.CloudResources = listVal
+	resp.Diagnostics.Append(resp.State.Set(ctx, &cfg)...)
+}
+
+var (
+	_ datasource.DataSource              = &ccrDS{}
+	_ datasource.DataSourceWithConfigure = &ccrDS{}
+)

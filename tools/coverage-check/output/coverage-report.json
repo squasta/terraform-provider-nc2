@@ -1,0 +1,646 @@
+{
+  "openapi_source": "openapi/openapi.json",
+  "total_operations": 49,
+  "covered": 49,
+  "uncovered": null,
+  "extras": null,
+  "mapping": [
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.RegionController.index",
+        "method": "GET",
+        "path": "/cloud-accounts/{cloud_account_id}/regions",
+        "tag": "regions"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.RegionController.index",
+        "terraform_op": "nc2_cloud_account_region.Read",
+        "source_file": "internal/resources/cloud_account_region/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.RegionController.create",
+        "method": "POST",
+        "path": "/cloud-accounts/{cloud_account_id}/regions",
+        "tag": "regions"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.RegionController.create",
+        "terraform_op": "nc2_cloud_account_region.Create",
+        "source_file": "internal/resources/cloud_account_region/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.AvailabilityZoneController.index",
+        "method": "GET",
+        "path": "/cloud-accounts/{cloud_account_id}/regions/{region_id}/availability-zones",
+        "tag": "availability zones"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.AvailabilityZoneController.index",
+        "terraform_op": "data.nc2_availability_zones.Read",
+        "source_file": "internal/datasources/availability_zones/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.PrismCentralController.index",
+        "method": "GET",
+        "path": "/cloud-accounts/{cloud_account_id}/regions/{region_id}/prism-centrals",
+        "tag": "prism centrals"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.PrismCentralController.index",
+        "terraform_op": "data.nc2_prism_centrals.Read",
+        "source_file": "internal/datasources/prism_centrals/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.SshKeyController.index",
+        "method": "GET",
+        "path": "/cloud-accounts/{cloud_account_id}/regions/{region_id}/ssh-keys",
+        "tag": "ssh keys"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.SshKeyController.index",
+        "terraform_op": "data.nc2_ssh_keys.Read",
+        "source_file": "internal/datasources/ssh_keys/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.VnetController.index",
+        "method": "GET",
+        "path": "/cloud-accounts/{cloud_account_id}/regions/{region_id}/vnets",
+        "tag": "vnets"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.VnetController.index",
+        "terraform_op": "data.nc2_vnets.Read",
+        "source_file": "internal/datasources/vnets/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.VpcController.index",
+        "method": "GET",
+        "path": "/cloud-accounts/{cloud_account_id}/regions/{region_id}/vpcs",
+        "tag": "vpcs"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.VpcController.index",
+        "terraform_op": "data.nc2_vpcs.Read",
+        "source_file": "internal/datasources/vpcs/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.CloudAccountController.show",
+        "method": "GET",
+        "path": "/cloud-accounts/{id}",
+        "tag": "cloud accounts"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.CloudAccountController.show",
+        "terraform_op": "nc2_cloud_account.Read",
+        "source_file": "internal/resources/cloud_account/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.CloudAccountController.update (2)",
+        "method": "PATCH",
+        "path": "/cloud-accounts/{id}",
+        "tag": "cloud accounts"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.CloudAccountController.update (2)",
+        "terraform_op": "nc2_cloud_account.Update",
+        "source_file": "internal/resources/cloud_account/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.CloudAccountController.update",
+        "method": "PUT",
+        "path": "/cloud-accounts/{id}",
+        "tag": "cloud accounts"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.CloudAccountController.update",
+        "terraform_op": "nc2_cloud_account.Update.put_replace_all",
+        "source_file": "internal/resources/cloud_account/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.CloudAccountController.update_credentials",
+        "method": "POST",
+        "path": "/cloud-accounts/{id}/update-credentials",
+        "tag": "cloud accounts"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.CloudAccountController.update_credentials",
+        "terraform_op": "nc2_cloud_account.Update.credentials",
+        "source_file": "internal/resources/cloud_account/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.index",
+        "method": "GET",
+        "path": "/clusters",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.index",
+        "terraform_op": "data.nc2_clusters.Read",
+        "source_file": "internal/datasources/clusters/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.create_aws",
+        "method": "POST",
+        "path": "/clusters/aws",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.create_aws",
+        "terraform_op": "nc2_aws_cluster.Create",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.create_azure",
+        "method": "POST",
+        "path": "/clusters/azure",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.create_azure",
+        "terraform_op": "nc2_azure_cluster.Create",
+        "source_file": "internal/resources/azure_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.create_gcp",
+        "method": "POST",
+        "path": "/clusters/gcp",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.create_gcp",
+        "terraform_op": "nc2_gcp_cluster.Create",
+        "source_file": "internal/resources/gcp_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.CloudResourceController.index",
+        "method": "GET",
+        "path": "/clusters/{cluster_id}/cloud-resources",
+        "tag": "cloud resources"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.CloudResourceController.index",
+        "terraform_op": "data.nc2_cluster_cloud_resources.Read",
+        "source_file": "internal/datasources/cluster_cloud_resources/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.show",
+        "method": "GET",
+        "path": "/clusters/{id}",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.show",
+        "terraform_op": "nc2_aws_cluster.Read",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update (2)",
+        "method": "PATCH",
+        "path": "/clusters/{id}",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update (2)",
+        "terraform_op": "nc2_aws_cluster.Update.generic",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update",
+        "method": "PUT",
+        "path": "/clusters/{id}",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update",
+        "terraform_op": "nc2_aws_cluster.Update.generic.put_replace_all",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.close_support_tunnel",
+        "method": "POST",
+        "path": "/clusters/{id}/close-support-tunnel",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.close_support_tunnel",
+        "terraform_op": "nc2_cluster_close_support_tunnel.Invoke",
+        "source_file": "internal/actions/cluster_close_support_tunnel/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.condemn_host",
+        "method": "POST",
+        "path": "/clusters/{id}/condemn-host",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.condemn_host",
+        "terraform_op": "nc2_cluster_condemn_host.Invoke",
+        "source_file": "internal/actions/cluster_condemn_host/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.extend_support_tunnel",
+        "method": "POST",
+        "path": "/clusters/{id}/extend-support-tunnel",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.extend_support_tunnel",
+        "terraform_op": "nc2_cluster_extend_support_tunnel.Invoke",
+        "source_file": "internal/actions/cluster_extend_support_tunnel/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.hibernate",
+        "method": "POST",
+        "path": "/clusters/{id}/hibernate",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.hibernate",
+        "terraform_op": "nc2_aws_cluster.Update.hibernate",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.open_support_tunnel",
+        "method": "POST",
+        "path": "/clusters/{id}/open-support-tunnel",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.open_support_tunnel",
+        "terraform_op": "nc2_cluster_open_support_tunnel.Invoke",
+        "source_file": "internal/actions/cluster_open_support_tunnel/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.resume",
+        "method": "POST",
+        "path": "/clusters/{id}/resume",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.resume",
+        "terraform_op": "nc2_aws_cluster.Update.resume",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.scale_out_fgw",
+        "method": "POST",
+        "path": "/clusters/{id}/scale-out-fgw",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.scale_out_fgw",
+        "terraform_op": "nc2_cluster_scale_flow_gateway.Invoke",
+        "source_file": "internal/actions/cluster_scale_flow_gateway/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.start_recovery",
+        "method": "POST",
+        "path": "/clusters/{id}/start-recovery",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.start_recovery",
+        "terraform_op": "nc2_cluster_start_recovery.Invoke",
+        "source_file": "internal/actions/cluster_start_recovery/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.terminate",
+        "method": "POST",
+        "path": "/clusters/{id}/terminate",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.terminate",
+        "terraform_op": "nc2_aws_cluster.Delete",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update_access_policy",
+        "method": "POST",
+        "path": "/clusters/{id}/update-access-policy",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update_access_policy",
+        "terraform_op": "nc2_aws_cluster.Update.access_policy",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update_capacity",
+        "method": "POST",
+        "path": "/clusters/{id}/update-capacity",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update_capacity",
+        "terraform_op": "nc2_aws_cluster.Update.capacity",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update_license",
+        "method": "POST",
+        "path": "/clusters/{id}/update-license",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update_license",
+        "terraform_op": "nc2_aws_cluster.Update.license",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update_resource_tags",
+        "method": "POST",
+        "path": "/clusters/{id}/update-resource-tags",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update_resource_tags",
+        "terraform_op": "nc2_aws_cluster.Update.resource_tags",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update_ssh_key",
+        "method": "POST",
+        "path": "/clusters/{id}/update-ssh-key",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.update_ssh_key",
+        "terraform_op": "nc2_aws_cluster.Update.ssh_key",
+        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.ClusterController.upgrade_fgw",
+        "method": "POST",
+        "path": "/clusters/{id}/upgrade-fgw",
+        "tag": "clusters"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.ClusterController.upgrade_fgw",
+        "terraform_op": "nc2_cluster_upgrade_flow_gateway.Invoke",
+        "source_file": "internal/actions/cluster_upgrade_flow_gateway/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.NotificationController.index",
+        "method": "GET",
+        "path": "/notifications",
+        "tag": "notifications"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.NotificationController.index",
+        "terraform_op": "data.nc2_notifications.Read",
+        "source_file": "internal/datasources/notifications/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.NotificationController.update (2)",
+        "method": "PATCH",
+        "path": "/notifications/{id}",
+        "tag": "notifications"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.NotificationController.update (2)",
+        "terraform_op": "nc2_notification_acknowledge.Invoke",
+        "source_file": "internal/actions/notification_acknowledge/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.NotificationController.update",
+        "method": "PUT",
+        "path": "/notifications/{id}",
+        "tag": "notifications"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.NotificationController.update",
+        "terraform_op": "nc2_notification_acknowledge.Invoke.put_replace_all",
+        "source_file": "internal/actions/notification_acknowledge/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.index",
+        "method": "GET",
+        "path": "/organizations",
+        "tag": "organizations"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.index",
+        "terraform_op": "data.nc2_organizations.Read",
+        "source_file": "internal/datasources/organizations/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.create",
+        "method": "POST",
+        "path": "/organizations",
+        "tag": "organizations"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.create",
+        "terraform_op": "nc2_organization.Create",
+        "source_file": "internal/resources/organization/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.show",
+        "method": "GET",
+        "path": "/organizations/{id}",
+        "tag": "organizations"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.show",
+        "terraform_op": "nc2_organization.Read",
+        "source_file": "internal/resources/organization/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.update (2)",
+        "method": "PATCH",
+        "path": "/organizations/{id}",
+        "tag": "organizations"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.update (2)",
+        "terraform_op": "nc2_organization.Update",
+        "source_file": "internal/resources/organization/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.update",
+        "method": "PUT",
+        "path": "/organizations/{id}",
+        "tag": "organizations"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.update",
+        "terraform_op": "nc2_organization.Update.put_replace_all",
+        "source_file": "internal/resources/organization/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.list_audit_trails",
+        "method": "GET",
+        "path": "/organizations/{id}/audit-trails",
+        "tag": "organizations"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.list_audit_trails",
+        "terraform_op": "data.nc2_organization_audit_trail.Read",
+        "source_file": "internal/datasources/organization_audit_trail/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.list_cloud_accounts",
+        "method": "GET",
+        "path": "/organizations/{id}/cloud-accounts",
+        "tag": "organizations"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.list_cloud_accounts",
+        "terraform_op": "data.nc2_cloud_accounts.Read",
+        "source_file": "internal/datasources/cloud_accounts/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.create_cloud_account",
+        "method": "POST",
+        "path": "/organizations/{id}/cloud-accounts/{cloud_provider}",
+        "tag": "organizations"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.create_cloud_account",
+        "terraform_op": "nc2_cloud_account.Create",
+        "source_file": "internal/resources/cloud_account/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.terminate",
+        "method": "PATCH",
+        "path": "/organizations/{id}/terminate",
+        "tag": "organizations"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.OrganizationController.terminate",
+        "terraform_op": "nc2_organization.Delete",
+        "source_file": "internal/resources/organization/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.RemoteStorageProfileController.index",
+        "method": "GET",
+        "path": "/remote-storage-profiles",
+        "tag": "remote storage profiles"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.RemoteStorageProfileController.index",
+        "terraform_op": "data.nc2_remote_storage_profiles.Read",
+        "source_file": "internal/datasources/remote_storage_profiles/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.TaskController.index",
+        "method": "GET",
+        "path": "/tasks",
+        "tag": "tasks"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.TaskController.index",
+        "terraform_op": "data.nc2_tasks.Read",
+        "source_file": "internal/datasources/tasks/openapi_mapping.go"
+      }
+    },
+    {
+      "operation": {
+        "operation_id": "CPanelWeb.Api.TaskController.show",
+        "method": "GET",
+        "path": "/tasks/{id}",
+        "tag": "tasks"
+      },
+      "mapped_to": {
+        "operation_id": "CPanelWeb.Api.TaskController.show",
+        "terraform_op": "data.nc2_task.Read",
+        "source_file": "internal/datasources/task/openapi_mapping.go"
+      }
+    }
+  ]
+}
