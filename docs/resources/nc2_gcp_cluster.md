@@ -3,6 +3,10 @@
 Manages an NC2 cluster on Google Cloud Platform.
 
 > `access_policy` is **not** available on this resource (FR-010a).
+>
+> `desired_state` (hibernate / resume) is **not** available on this
+> resource — the hibernate / resume lifecycle is AWS-only (FR-012).
+> Setting `desired_state` in configuration is a schema error.
 
 ## Example Usage
 

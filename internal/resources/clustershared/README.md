@@ -7,6 +7,11 @@ and trivially reasoned about in the framework's plan/apply loop.
 
 ## Public API
 
+- `type Model` — the cross-cloud framework model. Embedded by
+  `azure_cluster.model` and `gcp_cluster.model`.
+- `type HibernatingModel` — `Model` extended with the AWS-only
+  `desired_state` attribute. Embedded by `aws_cluster.model`
+  (FR-012).
 - `type OperationKind string` and the named constants
   `OpUpdateLicense`, `OpUpdateSSHKey`, `OpUpdateCapacity`,
   `OpUpdateResourceTags`, `OpUpdateAccessPolicy`, `OpGenericPatch`,
@@ -14,11 +19,21 @@ and trivially reasoned about in the framework's plan/apply loop.
 - `type Operation struct{ Kind OperationKind }` — what RouteUpdate
   schedules.
 - `type Diff struct{ ... }` — boolean per attribute group + the
-  before/after of `desired_state`.
+  before/after of `desired_state` (only AWS populates the latter).
 - `func RouteUpdate(d Diff) ([]Operation, error)` — the deterministic
   router.
+- `func CommonAttributes() map[string]schema.Attribute` — shared
+  schema baseline (no `desired_state`).
+- `func CommonAttributesWithHibernate() map[string]schema.Attribute`
+  — adds the AWS-only `desired_state` attribute (FR-012).
 - `func CommonAttributeNames() []string` — sorted reference list of
   every attribute that the per-cloud schemas share.
+- `func DeriveDesiredStateIfUnset(observedState string, current types.String) types.String`
+  — pure helper used by `nc2_aws_cluster` to map the observed
+  cluster state back into the Optional+Computed `desired_state`
+  attribute after each Read.
+- `func ReadHibernatingCluster` — AWS convenience wrapper around
+  `ReadCluster` that runs `DeriveDesiredStateIfUnset` afterwards.
 
 ## Update routing precedence (data-model.md §4)
 
@@ -30,10 +45,12 @@ end-to-end apply:
 2. `update-ssh-key`
 3. `update-capacity`
 4. `update-resource-tags`
-5. `update-access-policy` (AWS only — non-AWS callers leave
-   `Diff.AccessPolicy = false`)
+5. `update-access-policy` (AWS only, FR-010a — non-AWS callers
+   leave `Diff.AccessPolicy = false`)
 6. generic `PATCH /clusters/{id}`
-7. `hibernate` / `resume` if `desired_state` changed
+7. `hibernate` / `resume` if `desired_state` changed (AWS only,
+   FR-012 — non-AWS callers leave `Diff.DesiredStateFrom/To`
+   empty, so this branch is unreachable from Azure / GCP)
 
 ## Plan-time guard rails
 

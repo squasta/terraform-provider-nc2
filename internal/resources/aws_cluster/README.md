@@ -3,7 +3,8 @@
 Implements `nc2_aws_cluster` — the AWS variant of the NC2 cluster
 managed resource. Composes `internal/resources/clustershared` for
 the common attributes and CRUD plumbing, adds the AWS-only
-`access_policy` map.
+`access_policy` map, and exposes the AWS-only hibernate / resume
+`desired_state` surface.
 
 ## AWS-only `access_policy` (FR-010a)
 
@@ -12,6 +13,18 @@ attribute on `nc2_azure_cluster` or `nc2_gcp_cluster` is a
 compile-time error because those packages do not declare it. In-place
 changes route to `POST /clusters/{id}/update-access-policy` per the
 clustershared router's ordering.
+
+## AWS-only `desired_state` (FR-012)
+
+`nc2_aws_cluster` is the only cluster resource that exposes
+`desired_state` (allowed values: `running`, `hibernated`). Flipping
+the value routes to `POST /clusters/{id}/hibernate` or
+`POST /clusters/{id}/resume`. Combining a `desired_state` flip with
+any other field change in the same `apply` is rejected at routing
+time — split it into two `apply`s. The `nc2_azure_cluster` and
+`nc2_gcp_cluster` resources do not expose `desired_state` at all;
+this is enforced by their schemas (see their respective
+`schema_test.go::TestSchema_NoDesiredState`).
 
 ## Lifecycle
 

@@ -1,0 +1,38 @@
+{
+  "openapi_source": "openapi/openapi.json",
+  "strict": false,
+  "total_attributes": 644,
+  "pattern_hits": 2,
+  "classified": 0,
+  "findings": [
+    {
+      "severity": "MEDIUM",
+      "kind": "unclassified_field",
+      "attribute": "password",
+      "detail": "matches FR-002 pattern; runtime auto-redacts but no per-resource registry entry exists"
+    },
+    {
+      "severity": "MEDIUM",
+      "kind": "unclassified_field",
+      "attribute": "secret",
+      "detail": "matches FR-002 pattern; runtime auto-redacts but no per-resource registry entry exists"
+    }
+  ],
+  "registry_entries": [
+    "access_policy.ip_addresses (internal/resources/aws_cluster/sensitive.go)",
+    "credentials.aws.access_key_id (internal/resources/cloud_account/sensitive.go)",
+    "credentials.aws.secret_access_key (internal/resources/cloud_account/sensitive.go)",
+    "credentials.azure.client_secret (internal/resources/cloud_account/sensitive.go)",
+    "credentials.gcp.service_account_json (internal/resources/cloud_account/sensitive.go)",
+    "network.management_services_access_policy.ip_addresses (internal/resources/aws_cluster/sensitive.go)",
+    "network.management_services_access_policy.ip_addresses (internal/resources/azure_cluster/sensitive.go)",
+    "network.management_services_access_policy.ip_addresses (internal/resources/gcp_cluster/sensitive.go)",
+    "network.prism_element_access_policy.ip_addresses (internal/resources/aws_cluster/sensitive.go)",
+    "network.prism_element_access_policy.ip_addresses (internal/resources/azure_cluster/sensitive.go)",
+    "network.prism_element_access_policy.ip_addresses (internal/resources/gcp_cluster/sensitive.go)"
+  ],
+  "openapi_patterned_attrs": [
+    "password",
+    "secret"
+  ]
+}

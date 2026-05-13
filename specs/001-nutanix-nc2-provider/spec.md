@@ -90,19 +90,22 @@ A platform engineer wants to look up NC2 inventory — regions enabled on a clou
 
 ---
 
-### User Story 4 - Operational cluster lifecycle controls: hibernate and resume (Priority: P3)
+### User Story 4 - Operational cluster lifecycle controls: hibernate and resume (AWS only) (Priority: P3)
 
-A platform engineer wants to hibernate idle clusters to save cost and resume them later, using a Terraform attribute on the cluster resource rather than out-of-band API calls.
+A platform engineer wants to hibernate idle AWS-hosted clusters to save cost and resume them later, using a Terraform attribute on the cluster resource rather than out-of-band API calls.
 
 **Why this priority**: Hibernate/resume is a cost optimization that is valuable but not on the critical path to a usable provider. Modeling it as a `desired_state` attribute keeps the resource shape clean. Depends on User Story 2 (cluster must exist to be hibernated).
 
-**Independent Test**: Apply a running cluster, set the cluster's `desired_state` attribute to `hibernated`, apply, and verify the cluster transitions to hibernated; flip back to `running`, apply, and verify resume succeeds. Plan-after-apply is clean in both directions.
+**Scope**: Hibernate / resume is **AWS-only**. The `nc2_aws_cluster` resource exposes a `desired_state` attribute. The Azure (`nc2_azure_cluster`) and GCP (`nc2_gcp_cluster`) cluster resources do **not** expose `desired_state`; setting it on those resources is a schema error at plan time. NC2 does support cluster hibernate on Azure / GCP at the API level, but the provider does not surface that lifecycle today (the underlying control-plane semantics differ enough between clouds that a single `desired_state` attribute would mislead operators); Azure / GCP coverage may follow in a future release.
+
+**Independent Test**: Apply a running AWS cluster, set the cluster's `desired_state` attribute to `hibernated`, apply, and verify the cluster transitions to hibernated; flip back to `running`, apply, and verify resume succeeds. Plan-after-apply is clean in both directions.
 
 **Acceptance Scenarios**:
 
-1. **Given** an applied running cluster, **When** the user sets `desired_state = "hibernated"` and applies, **Then** the provider calls `POST /clusters/{id}/hibernate` and the cluster reaches the hibernated state.
-2. **Given** a hibernated cluster, **When** the user sets `desired_state = "running"` and applies, **Then** the provider calls `POST /clusters/{id}/resume` and the cluster returns to running.
+1. **Given** an applied running AWS cluster, **When** the user sets `desired_state = "hibernated"` and applies, **Then** the provider calls `POST /clusters/{id}/hibernate` and the cluster reaches the hibernated state.
+2. **Given** a hibernated AWS cluster, **When** the user sets `desired_state = "running"` and applies, **Then** the provider calls `POST /clusters/{id}/resume` and the cluster returns to running.
 3. **Given** either transition, **When** the user runs `terraform plan` immediately afterward, **Then** plan reports no changes.
+4. **Given** any `nc2_azure_cluster` or `nc2_gcp_cluster` configuration, **When** the user adds a `desired_state` argument, **Then** Terraform reports a schema error at plan time and no API calls are made.
 
 ---
 
@@ -181,7 +184,7 @@ A platform engineer wants to trigger one-shot operational events from Terraform 
 - **FR-010a**: The `access_policy` attribute and its update endpoint apply **only** to `nc2_aws_cluster`. The Azure and GCP cluster resources MUST NOT expose this attribute; if a user attempts to set it on those resources, validation MUST fail at plan time.
 - **FR-010b**: For each NC2 resource that exposes both `PATCH` and `PUT` update variants (clusters, organizations, cloud accounts, notifications), the provider MUST canonically use `PATCH` for partial-field updates driven by Terraform diffs, and reserve `PUT` only for full-replacement scenarios (none expected for normal Terraform flows). This canonical mapping MUST be documented and used consistently.
 - **FR-011**: For every managed resource attribute that NC2 does not support updating in place, the provider MUST mark the attribute so that a change forces resource replacement.
-- **FR-012**: The provider MUST support cluster hibernate and resume as a `desired_state` attribute on each cluster resource (values: `running`, `hibernated`), mapping transitions to `POST /clusters/{id}/hibernate` and `POST /clusters/{id}/resume`.
+- **FR-012**: The provider MUST support cluster hibernate and resume on **AWS only** as a `desired_state` attribute on `nc2_aws_cluster` (values: `running`, `hibernated`), mapping transitions to `POST /clusters/{id}/hibernate` and `POST /clusters/{id}/resume`. The Azure (`nc2_azure_cluster`) and GCP (`nc2_gcp_cluster`) cluster resources MUST NOT expose `desired_state`; setting it in configuration MUST be a schema error at plan time. Azure / GCP hibernate coverage is intentionally deferred to a later release.
 - **FR-013**: Every managed resource MUST support `terraform import` such that, after import, `terraform plan` reports no changes.
 
 #### Data Sources

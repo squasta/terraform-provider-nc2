@@ -172,7 +172,11 @@ func ApplyUpdates(ctx context.Context, c *client.Client, crud CRUD, id string, o
 }
 
 // UpdateModelFromResponse populates the common fields on m from a
-// canonical NC2 cluster response body.
+// canonical NC2 cluster response body. It does NOT touch
+// `desired_state` — that field lives on HibernatingModel, not Model
+// (hibernate is AWS-only per FR-012). AWS callers should follow up
+// with DeriveDesiredStateIfUnset to map the observed lifecycle
+// state into the (Optional+Computed) `desired_state` attribute.
 func UpdateModelFromResponse(m *Model, body map[string]any) {
 	data, ok := body["data"].(map[string]any)
 	if !ok {
@@ -217,17 +221,53 @@ func UpdateModelFromResponse(m *Model, body map[string]any) {
 	if v, ok := data["updated_at"].(string); ok {
 		m.UpdatedAt = types.StringValue(v)
 	}
-	// Map state.state -> desired_state when desired_state is unknown.
-	switch m.State.ValueString() {
-	case "hibernated", "hibernating":
-		if m.DesiredState.IsNull() || m.DesiredState.IsUnknown() {
-			m.DesiredState = types.StringValue("hibernated")
-		}
-	case "running":
-		if m.DesiredState.IsNull() || m.DesiredState.IsUnknown() {
-			m.DesiredState = types.StringValue("running")
-		}
+}
+
+// DeriveDesiredStateIfUnset maps the observed cluster lifecycle
+// state into the AWS-only `desired_state` attribute when the latter
+// is currently null or unknown. When `current` already carries an
+// explicit value, it is returned unchanged so a planned hibernate /
+// resume isn't accidentally overwritten by Read.
+//
+// Mapping (matches data-model.md §3.5):
+//   - observed `running`                            → "running"
+//   - observed `hibernated` or `hibernating`        → "hibernated"
+//   - everything else (provisioning, terminating,
+//     terminated, failed, …)                       → returned as-is
+//
+// Hibernate is AWS-only (FR-012); Azure / GCP callers should NOT
+// invoke this helper.
+func DeriveDesiredStateIfUnset(observedState string, current types.String) types.String {
+	if !current.IsNull() && !current.IsUnknown() {
+		return current
 	}
+	switch observedState {
+	case "hibernated", "hibernating":
+		return types.StringValue("hibernated")
+	case "running":
+		return types.StringValue("running")
+	}
+	return current
+}
+
+// UpdateHibernatingModelFromResponse is the AWS-only convenience
+// wrapper that combines UpdateModelFromResponse on the embedded
+// base model with DeriveDesiredStateIfUnset on the `desired_state`
+// attribute.
+func UpdateHibernatingModelFromResponse(m *HibernatingModel, body map[string]any) {
+	UpdateModelFromResponse(&m.Model, body)
+	m.DesiredState = DeriveDesiredStateIfUnset(m.State.ValueString(), m.DesiredState)
+}
+
+// ReadHibernatingCluster is the AWS-only counterpart to ReadCluster.
+// It reads the cluster, populates the embedded base Model fields,
+// and finally derives `desired_state` from the observed state.
+func ReadHibernatingCluster(ctx context.Context, c *client.Client, crud CRUD, id string, m *HibernatingModel) (bool, diag.Diagnostics) {
+	notFound, diags := ReadCluster(ctx, c, crud, id, &m.Model)
+	if !notFound && !diags.HasError() {
+		m.DesiredState = DeriveDesiredStateIfUnset(m.State.ValueString(), m.DesiredState)
+	}
+	return notFound, diags
 }
 
 // stringFromBody walks a parsed JSON object and returns the string

@@ -14,8 +14,8 @@
       },
       "mapped_to": {
         "operation_id": "CPanelWeb.Api.RegionController.index",
-        "terraform_op": "nc2_cloud_account_region.Read",
-        "source_file": "internal/resources/cloud_account_region/openapi_mapping.go"
+        "terraform_op": "data.nc2_cloud_account_regions.Read",
+        "source_file": "internal/datasources/cloud_account_regions/openapi_mapping.go"
       }
     },
     {
@@ -105,8 +105,8 @@
       },
       "mapped_to": {
         "operation_id": "CPanelWeb.Api.CloudAccountController.show",
-        "terraform_op": "nc2_cloud_account.Read",
-        "source_file": "internal/resources/cloud_account/openapi_mapping.go"
+        "terraform_op": "data.nc2_cloud_account.Read",
+        "source_file": "internal/datasources/cloud_account/openapi_mapping.go"
       }
     },
     {
@@ -222,8 +222,8 @@
       },
       "mapped_to": {
         "operation_id": "CPanelWeb.Api.ClusterController.show",
-        "terraform_op": "nc2_aws_cluster.Read",
-        "source_file": "internal/resources/aws_cluster/openapi_mapping.go"
+        "terraform_op": "data.nc2_cluster.Read",
+        "source_file": "internal/datasources/cluster/openapi_mapping.go"
       }
     },
     {
@@ -521,8 +521,8 @@
       },
       "mapped_to": {
         "operation_id": "CPanelWeb.Api.OrganizationController.show",
-        "terraform_op": "nc2_organization.Read",
-        "source_file": "internal/resources/organization/openapi_mapping.go"
+        "terraform_op": "data.nc2_organization.Read",
+        "source_file": "internal/datasources/organization/openapi_mapping.go"
       }
     },
     {

@@ -1,0 +1,97 @@
+# GoReleaser configuration for terraform-provider-nc2.
+#
+# This file produces:
+#   - Provider binaries for the Terraform Registry-required matrix
+#     (linux/darwin/windows/freebsd × amd64/arm64/386).
+#   - SHA256SUMS aggregated checksum file (GPG-signed by the
+#     `signs` block below).
+#   - Per-artifact archives in the layout the Terraform Registry
+#     expects: terraform-provider-nc2_<version>_<os>_<arch>.zip.
+#
+# Cosign keyless signatures and SLSA provenance are produced by
+# .github/workflows/release.yml (out-of-band of this file). See
+# FR-032 / FR-032a / FR-032b for the supply-chain requirements.
+
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    - go test ./...
+
+builds:
+  - id: provider
+    binary: '{{ .ProjectName }}_v{{ .Version }}'
+    main: ./
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X 'github.com/nutanix/terraform-provider-nc2/internal/provider.version={{ .Version }}'
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+      - freebsd
+    goarch:
+      - amd64
+      - arm64
+      - "386"
+    ignore:
+      - goos: darwin
+        goarch: "386"
+      - goos: windows
+        goarch: arm64
+      - goos: freebsd
+        goarch: arm64
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: registry
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    format: zip
+    files:
+      - LICENSE
+
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_SHA256SUMS'
+  algorithm: sha256
+
+signs:
+  # GPG signature on the SHA256SUMS file. Required by the Terraform
+  # Registry. The release workflow loads the GPG key from secrets.
+  - id: gpg-sumfile
+    artifacts: checksum
+    cmd: gpg
+    args:
+      - "--batch"
+      - "-u"
+      - "{{ .Env.GPG_FINGERPRINT }}"
+      - "--output"
+      - "${signature}"
+      - "--detach-sign"
+      - "${artifact}"
+    signature: '${artifact}.sig'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
+
+release:
+  draft: true
+  prerelease: auto
+  extra_files:
+    - glob: terraform-registry-manifest.json
+      name_template: '{{ .ProjectName }}_{{ .Version }}_manifest.json'
+
+changelog:
+  use: github
+  sort: asc
+  groups:
+    - title: Features
+      regexp: "^.*feat[(\\w)]*:+.*$"
+    - title: Bug fixes
+      regexp: "^.*fix[(\\w)]*:+.*$"
+    - title: Other
+      order: 999

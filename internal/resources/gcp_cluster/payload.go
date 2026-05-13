@@ -27,6 +27,11 @@ func buildCreateBody(m *model) map[string]any {
 	return body
 }
 
+// computeDiff inspects state vs plan and produces the boolean
+// per-attribute diff that clustershared.RouteUpdate consumes.
+// Hibernate / resume are intentionally absent — `desired_state` is
+// AWS-only (FR-012) and is not part of the GCP schema, so the
+// returned Diff's DesiredStateFrom/To always remain empty.
 func computeDiff(state, plan *model) clustershared.Diff {
 	d := clustershared.Diff{
 		License: !plan.License.Equal(state.License) ||
@@ -38,11 +43,6 @@ func computeDiff(state, plan *model) clustershared.Diff {
 	}
 	if !plan.UseCase.Equal(state.UseCase) {
 		d.GenericMutable = true
-	}
-	if state.DesiredState.ValueString() != plan.DesiredState.ValueString() &&
-		!plan.DesiredState.IsNull() && !plan.DesiredState.IsUnknown() {
-		d.DesiredStateFrom = state.DesiredState.ValueString()
-		d.DesiredStateTo = plan.DesiredState.ValueString()
 	}
 	return d
 }
@@ -57,9 +57,7 @@ func buildUpdateBodies(_, plan *model) clustershared.UpdateBodies {
 		SSHKey: map[string]any{
 			"host_access_ssh_key": plan.HostAccessSSHKey.ValueString(),
 		},
-		GenericPatch:  map[string]any{"use_case": plan.UseCase.ValueString()},
-		HibernateBody: map[string]any{},
-		ResumeBody:    map[string]any{},
+		GenericPatch: map[string]any{"use_case": plan.UseCase.ValueString()},
 	}
 	if cap := mapsListFromTFList(plan.Capacity); cap != nil {
 		bodies.Capacity = map[string]any{"capacity": cap}

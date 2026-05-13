@@ -68,7 +68,7 @@ func (r *awsClusterResource) Create(ctx context.Context, req resource.CreateRequ
 		return
 	}
 	plan.ID = stringValue(id)
-	if _, diags := clustershared.ReadCluster(ctx, r.c, crudSpec, id, &plan.Model); len(diags) > 0 {
+	if _, diags := clustershared.ReadHibernatingCluster(ctx, r.c, crudSpec, id, &plan.HibernatingModel); len(diags) > 0 {
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return
@@ -87,7 +87,7 @@ func (r *awsClusterResource) Read(ctx context.Context, req resource.ReadRequest,
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	notFound, diags := clustershared.ReadCluster(ctx, r.c, crudSpec, state.ID.ValueString(), &state.Model)
+	notFound, diags := clustershared.ReadHibernatingCluster(ctx, r.c, crudSpec, state.ID.ValueString(), &state.HibernatingModel)
 	resp.Diagnostics.Append(diags...)
 	if notFound {
 		resp.State.RemoveResource(ctx)
@@ -122,7 +122,7 @@ func (r *awsClusterResource) Update(ctx context.Context, req resource.UpdateRequ
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	if _, diags := clustershared.ReadCluster(ctx, r.c, crudSpec, state.ID.ValueString(), &plan.Model); len(diags) > 0 {
+	if _, diags := clustershared.ReadHibernatingCluster(ctx, r.c, crudSpec, state.ID.ValueString(), &plan.HibernatingModel); len(diags) > 0 {
 		resp.Diagnostics.Append(diags...)
 		if resp.Diagnostics.HasError() {
 			return

@@ -17,14 +17,16 @@ import (
 )
 
 // model is the AWS-cluster framework model. It embeds the shared
-// fields and adds the AWS-only `access_policy` map.
+// HibernatingModel (which carries the AWS-only `desired_state`
+// surface, FR-012) and adds the AWS-only `access_policy` map
+// (FR-010a).
 type model struct {
-	clustershared.Model
+	clustershared.HibernatingModel
 	AccessPolicy types.Map `tfsdk:"access_policy"`
 }
 
 func resourceSchema(_ context.Context) schema.Schema {
-	attrs := clustershared.CommonAttributes()
+	attrs := clustershared.CommonAttributesWithHibernate()
 	attrs["access_policy"] = schema.MapAttribute{
 		Description: "AWS-only access policy. Setting this attribute on nc2_azure_cluster or " +
 			"nc2_gcp_cluster is rejected at the schema level (FR-010a). " +
@@ -33,7 +35,8 @@ func resourceSchema(_ context.Context) schema.Schema {
 		Optional:    true,
 	}
 	return schema.Schema{
-		Description: "Manages an NC2 cluster on AWS. Async create/update/delete are handled via internal task polling (FR-008).",
-		Attributes:  attrs,
+		Description: "Manages an NC2 cluster on AWS. Async create/update/delete are handled via internal task polling (FR-008). " +
+			"AWS is the only cloud that exposes the hibernate / resume `desired_state` attribute (FR-012).",
+		Attributes: attrs,
 	}
 }

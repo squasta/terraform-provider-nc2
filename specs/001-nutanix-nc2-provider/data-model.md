@@ -166,8 +166,8 @@ Terraform Update operates only on `active` organizations. Terminate (Delete) mov
 | `CPanelWeb.Api.ClusterController.update` | PATCH | `/clusters/{id}` | `<cloud>.Update` (generic mutable fields) |
 | `CPanelWeb.Api.ClusterController.update (2)` | PUT | `/clusters/{id}` | `client.Cluster.ReplaceAll` (CI-only path) |
 | `CPanelWeb.Api.ClusterController.terminate` | POST | `/clusters/{id}/terminate` | `<cloud>.Delete` |
-| `CPanelWeb.Api.ClusterController.hibernate` | POST | `/clusters/{id}/hibernate` | `<cloud>.Update` when `desired_state: running → hibernated` |
-| `CPanelWeb.Api.ClusterController.resume` | POST | `/clusters/{id}/resume` | `<cloud>.Update` when `desired_state: hibernated → running` |
+| `CPanelWeb.Api.ClusterController.hibernate` | POST | `/clusters/{id}/hibernate` | `nc2_aws_cluster.Update` when `desired_state: running → hibernated` (**AWS only**, FR-012) |
+| `CPanelWeb.Api.ClusterController.resume` | POST | `/clusters/{id}/resume` | `nc2_aws_cluster.Update` when `desired_state: hibernated → running` (**AWS only**, FR-012) |
 | `CPanelWeb.Api.ClusterController.update_capacity` | POST | `/clusters/{id}/update-capacity` | `<cloud>.Update` when `capacity` changes |
 | `CPanelWeb.Api.ClusterController.update_ssh_key` | POST | `/clusters/{id}/update-ssh-key` | `<cloud>.Update` when `host_access_ssh_key` changes |
 | `CPanelWeb.Api.ClusterController.update_license` | POST | `/clusters/{id}/update-license` | `<cloud>.Update` when `license`/`software_tier`/`aos_version` changes |
@@ -200,7 +200,6 @@ Terraform Update operates only on `active` organizations. Terminate (Delete) mov
 | `network.management_services_access_policy` | Object{mode, ip_addresses} | Optional | – | false | request: `data.network.management_services_access_policy` | mode ∈ {`open`,`restricted`} |
 | `network.prism_element_access_policy` | Object{mode, ip_addresses} | Optional | – | false | request: `data.network.prism_element_access_policy` | mode ∈ {`open`,`restricted`} |
 | `resource_tags` | Map<String> | Optional | – (in-place via `update-resource-tags`) | false | request: `data.resource_tags` | keys 1–128 chars |
-| `desired_state` | String | Optional+Default | – | false | derived: hibernate/resume endpoints | one of `running`, `hibernated`; default `running` |
 | `state` | String | Computed | – | false | response: `data.state` | enum {`provisioning`, `running`, `hibernating`, `hibernated`, `resuming`, `terminating`, `terminated`, `failed`} |
 | `created_at` | String | Computed | UseStateForUnknown | false | response: `data.created_at` | RFC 3339 |
 | `updated_at` | String | Computed | – | false | response: `data.updated_at` | RFC 3339 |
@@ -211,6 +210,7 @@ Terraform Update operates only on `active` organizations. Terminate (Delete) mov
 |---|---|---|---|---|---|---|
 | `access_policy` | Object{...} | Optional | – (in-place via `update-access-policy`) | false | request: `data.access_policy`; update via `/clusters/{id}/update-access-policy` | per OpenAPI |
 | `network.aws.subnets` | List<Object{id, availability_zone}> | Optional | RequiresReplace | false | request: `data.network.aws.subnets` | per OpenAPI |
+| `desired_state` | String | Optional+Computed | – | false | derived: hibernate/resume endpoints | one of `running`, `hibernated`; FR-012 (**AWS only**; rejected at the schema level on `nc2_azure_cluster` / `nc2_gcp_cluster`) |
 
 **Azure-only additional schema (`nc2_azure_cluster`)**:
 
@@ -249,7 +249,7 @@ Terraform Update operates only on `active` organizations. Terminate (Delete) mov
   any state → failed (terminal for managed-resource purposes; user must Delete to reconcile)
 ```
 
-**Update routing** (precedence when multiple changes are in the same diff): the provider applies operations in this fixed order to maximize success: (1) `update-license`, (2) `update-ssh-key`, (3) `update-capacity`, (4) `update-resource-tags`, (5) `update-access-policy` (AWS only), (6) generic `PATCH /clusters/{id}`, (7) hibernate/resume if `desired_state` changed. Plan-time validation rejects mutually-incompatible diffs (e.g., setting `desired_state=hibernated` AND increasing `capacity` in the same diff is rejected with a clear error).
+**Update routing** (precedence when multiple changes are in the same diff): the provider applies operations in this fixed order to maximize success: (1) `update-license`, (2) `update-ssh-key`, (3) `update-capacity`, (4) `update-resource-tags`, (5) `update-access-policy` (AWS only, FR-010a), (6) generic `PATCH /clusters/{id}`, (7) hibernate/resume if `desired_state` changed (AWS only, FR-012). Plan-time validation rejects mutually-incompatible diffs (e.g., setting `desired_state=hibernated` AND increasing `capacity` in the same diff is rejected with a clear error). On Azure / GCP cluster resources, steps (5) and (7) are unreachable: `access_policy` and `desired_state` are not part of the schema, so the diff never carries those flags.
 
 **Sensitive registry (per package)**:
 

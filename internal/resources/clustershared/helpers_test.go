@@ -112,14 +112,16 @@ func TestRouteUpdate_NoOp(t *testing.T) {
 }
 
 // TestCommonAttributeNames is a smoke check that the canonical name
-// set covers every attribute documented in data-model.md §4.
+// set covers every cross-cloud attribute documented in
+// data-model.md §4. `desired_state` is intentionally absent — it is
+// AWS-only (FR-012) and lives in CommonAttributesWithHibernate.
 func TestCommonAttributeNames(t *testing.T) {
 	t.Parallel()
 
 	got := CommonAttributeNames()
 	required := []string{
 		"id", "organization_id", "cloud_account_id", "name", "region",
-		"capacity", "network", "redundancy", "license", "desired_state",
+		"capacity", "network", "redundancy", "license",
 	}
 	for _, r := range required {
 		found := false
@@ -132,5 +134,22 @@ func TestCommonAttributeNames(t *testing.T) {
 		if !found {
 			t.Errorf("missing %q from CommonAttributeNames", r)
 		}
+	}
+
+	for _, g := range got {
+		if g == "desired_state" {
+			t.Errorf("CommonAttributeNames must NOT include %q (AWS-only per FR-012)", g)
+		}
+	}
+}
+
+// TestCommonAttributesWithHibernate_AddsDesiredState pins the
+// AWS-only `desired_state` surface added by the hibernating variant.
+func TestCommonAttributesWithHibernate_AddsDesiredState(t *testing.T) {
+	t.Parallel()
+
+	attrs := CommonAttributesWithHibernate()
+	if _, ok := attrs["desired_state"]; !ok {
+		t.Errorf("CommonAttributesWithHibernate missing desired_state")
 	}
 }

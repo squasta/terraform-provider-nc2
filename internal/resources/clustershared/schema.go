@@ -8,9 +8,13 @@ import (
 )
 
 // CommonAttributes returns the framework attribute map shared by all
-// three cloud-specific cluster resources. Per-cloud schemas merge
-// these with their cloud-specific extras (e.g. AWS adds
-// `access_policy`, GCP adds `network.gcp.*`).
+// three cloud-specific cluster resources. It deliberately omits
+// `desired_state` (hibernate / resume) — that surface is AWS-only
+// (FR-012). The AWS resource calls CommonAttributesWithHibernate
+// instead; Azure / GCP call this function directly.
+//
+// Per-cloud schemas merge this map with their cloud-specific extras
+// (e.g. AWS adds `access_policy`).
 //
 // The returned map is freshly allocated; mutations by callers do not
 // affect later invocations.
@@ -95,12 +99,6 @@ func CommonAttributes() map[string]schema.Attribute {
 			ElementType: types.StringType,
 			Optional:    true,
 		},
-		"desired_state": schema.StringAttribute{
-			Description: "Desired runtime state: running or hibernated. " +
-				"Transitions route to POST /clusters/{id}/hibernate or /resume.",
-			Optional: true,
-			Computed: true,
-		},
 		"state": schema.StringAttribute{
 			Description: "Observed cluster lifecycle state.",
 			Computed:    true,
@@ -117,4 +115,25 @@ func CommonAttributes() map[string]schema.Attribute {
 			Computed:    true,
 		},
 	}
+}
+
+// CommonAttributesWithHibernate returns CommonAttributes() with the
+// AWS-only `desired_state` attribute appended. Used exclusively by
+// `nc2_aws_cluster`. Azure / GCP must continue to call
+// CommonAttributes() — they have no hibernate surface (FR-012).
+//
+// The `desired_state` attribute is Optional+Computed: callers may
+// omit it (the runtime derives it from the observed `state` after
+// each Read), or set it explicitly to flip the cluster to or from
+// hibernated.
+func CommonAttributesWithHibernate() map[string]schema.Attribute {
+	attrs := CommonAttributes()
+	attrs["desired_state"] = schema.StringAttribute{
+		Description: "AWS-only desired runtime state: running or hibernated. " +
+			"Transitions route to POST /clusters/{id}/hibernate or /resume. " +
+			"Not exposed on nc2_azure_cluster or nc2_gcp_cluster.",
+		Optional: true,
+		Computed: true,
+	}
+	return attrs
 }

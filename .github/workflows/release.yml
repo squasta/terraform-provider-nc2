@@ -1,0 +1,120 @@
+name: release
+
+# Triggered on tag push of the form `vMAJOR.MINOR.PATCH` (Semver). The
+# pipeline produces:
+#   1. GoReleaser-built provider binaries + SHA256SUMS (GPG-signed).
+#   2. Cosign keyless signatures over every released artifact.
+#   3. SLSA Level 3 provenance via slsa-github-generator.
+#   4. govulncheck + osv-scanner reports; HIGH/CRITICAL CVEs HARD-FAIL
+#      the workflow per FR-032a.
+#
+# The combination satisfies FR-032 (signing) and FR-032b (attestation).
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write   # for GitHub release create
+  id-token: write   # for cosign keyless signing via OIDC
+  packages: write
+  attestations: write
+
+env:
+  GO_VERSION: '1.24'
+
+jobs:
+  vuln:
+    name: Vulnerability scan (FR-032a)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
+      - name: osv-scanner
+        run: |
+          go install github.com/google/osv-scanner/cmd/osv-scanner@latest
+          osv-scanner --recursive .
+
+  goreleaser:
+    name: GoReleaser
+    runs-on: ubuntu-latest
+    needs: vuln
+    outputs:
+      hashes: ${{ steps.hashes.outputs.hashes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: Import GPG key
+        id: import-gpg
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+      - name: GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GPG_FINGERPRINT: ${{ steps.import-gpg.outputs.fingerprint }}
+      - name: Compute artifact hashes for SLSA
+        id: hashes
+        run: |
+          set -euo pipefail
+          cd dist
+          # Aggregate every release artifact into a base64-encoded
+          # multi-line string the SLSA generator consumes.
+          HASHES=$(sha256sum *.zip *.json | base64 -w0)
+          echo "hashes=$HASHES" >> "$GITHUB_OUTPUT"
+
+  cosign-sign:
+    name: Cosign keyless sign
+    runs-on: ubuntu-latest
+    needs: goreleaser
+    steps:
+      - uses: actions/checkout@v4
+      - uses: sigstore/cosign-installer@v3
+      - name: Sign release archives
+        env:
+          COSIGN_EXPERIMENTAL: "true"
+        run: |
+          set -euo pipefail
+          # Re-fetch artifacts from the GitHub release so we sign
+          # the same bytes operators will download.
+          gh release download "${GITHUB_REF#refs/tags/}" --dir dist
+          cd dist
+          for f in *.zip; do
+            cosign sign-blob \
+              --yes \
+              --bundle "${f}.cosign.bundle" \
+              --output-signature "${f}.sig" \
+              --output-certificate "${f}.pem" \
+              "${f}"
+          done
+          gh release upload "${GITHUB_REF#refs/tags/}" *.sig *.pem *.cosign.bundle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  slsa-provenance:
+    name: SLSA Level 3 provenance
+    needs: goreleaser
+    permissions:
+      id-token: write
+      contents: write
+      actions: read
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@v2.0.0
+    with:
+      base64-subjects: ${{ needs.goreleaser.outputs.hashes }}
+      upload-assets: true
