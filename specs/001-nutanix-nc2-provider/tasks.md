@@ -12,6 +12,23 @@ description: "Task list for terraform-provider-nc2 implementation"
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
+## Implementation Status (last updated 2026-05-13)
+
+Snapshot of where the codebase stands relative to the task list. Complete unit / package coverage is summarized via `go test ./...` results captured in this session.
+
+| Phase | Scope | Status |
+|---|---|---|
+| Phase 1 — Setup (T001–T010) | Repo layout, Go module, CI scaffolding, lint config, license, README | **Complete** |
+| Phase 2 — Foundational (T011–T045) | redact, oapi, auth, audit, client, provider, orgshared, dsshared, clustershared, main.go | **Complete** for runtime libraries (T011–T023, T026–T032, T035–T038, T043, T045); **TODO**: T025 untrusted-cert TLS test, T034 import-graph guard, T039–T042 CI tools, T044 main_test.go |
+| Phase 3 — US1 MVP (T046–T090) | nc2_organization, nc2_cloud_account, nc2_cloud_account_region + 6 data sources | **Not started**; this is the highest-priority next slice |
+| Phase 4 — US2 (T091–T126) | nc2_aws_cluster, nc2_azure_cluster, nc2_gcp_cluster + cluster data sources | **Implementations land**; full test coverage (lifecycle, drift-free, sensitive, audit-emission) only partially authored — most existing `*_test.go` files are smoke-level operation-mapping checks |
+| Phase 5 — US3 (T127–T151) | 10 inventory / discovery data sources | **Implementations land**; tests are minimal — same gap as Phase 4 |
+| Phase 6 — US4 (T152–T164) | desired_state hibernate/resume on the 3 cluster resources | `MapDesiredStateTransition` + `RouteUpdate` pure helpers complete with unit tests; per-cluster wiring lands; per-cluster hibernate_test.go files still TODO |
+| Phase 7 — US5 (T165–T188) | 8 actions + shared scaffolding | **Implementations land**; per-action tests are operation-mapping smoke checks only |
+| Phase 8 — Polish (T189–T212) | Release pipeline, supply-chain attestation, docs guides, integration tests | **Not started** |
+
+`go test ./...` is green across every package present in the repo as of this snapshot.
+
 ## Format: `[ID] [P?] [Story?] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
@@ -52,46 +69,46 @@ Single Go module at the repository root (per `plan.md`). All paths below are rel
 
 ### Library: `internal/redact` (FR-002, FR-002a, FR-002b)
 
-- [ ] T011 [P] Author the failing pattern-match unit tests in `internal/redact/patterns_test.go`: table-driven cases for `credential`, `password`, `secret`, `token`, `private_key`, `api_key` (case-insensitive), plus negative cases (`description`, `name`, etc.); verify failure with `go test ./internal/redact/...` before moving on
-- [ ] T012 [P] Author the failing redaction unit tests in `internal/redact/redact_test.go`: cases for flat fields, nested fields, list fields, override registry entries, idempotency, and "marked sensitive but absent from data" no-op
-- [ ] T013 Implement `internal/redact/patterns.go` exporting `var FR002Patterns []string` and `func MatchPattern(name string) bool` until T011 passes
-- [ ] T014 Implement `internal/redact/redact.go` exporting `type Registry`, `func NewRegistry(extra []string) Registry`, `func (r Registry) Redact(rec map[string]any) map[string]any` (pure function, returns a deep-copied redacted map) until T012 passes
-- [ ] T015 [P] Write `internal/redact/README.md` describing purpose, public API, and the FR-002 pattern list
+- [X] T011 [P] Author the failing pattern-match unit tests in `internal/redact/patterns_test.go`: table-driven cases for `credential`, `password`, `secret`, `token`, `private_key`, `api_key` (case-insensitive), plus negative cases (`description`, `name`, etc.); verify failure with `go test ./internal/redact/...` before moving on
+- [X] T012 [P] Author the failing redaction unit tests in `internal/redact/redact_test.go`: cases for flat fields, nested fields, list fields, override registry entries, idempotency, and "marked sensitive but absent from data" no-op
+- [X] T013 Implement `internal/redact/patterns.go` exporting `var FR002Patterns []string` and `func MatchPattern(name string) bool` until T011 passes
+- [X] T014 Implement `internal/redact/redact.go` exporting `type Registry`, `func NewRegistry(extra []string) Registry`, `func (r Registry) Redact(rec map[string]any) map[string]any` (pure function, returns a deep-copied redacted map) until T012 passes
+- [X] T015 [P] Write `internal/redact/README.md` describing purpose, public API, and the FR-002 pattern list
 
 ### Library: `internal/auth` (FR-001)
 
-- [ ] T016 [P] Author the failing JWT minting unit tests in `internal/auth/jwt_test.go`: golden-fixture cases per the R-02 recipe (HS512, `secret = base64(HMAC-SHA512(api_key, key_id))`, `aud=https://apikeys.nutanix.com`, `kid` header, `exp = iat + 300s`), plus negative cases (empty inputs error cleanly, malformed issuer rejected)
-- [ ] T017 [P] Author the failing TokenManager unit tests in `internal/auth/manager_test.go`: cached-token reuse, refresh-on-expiry (using a `func() time.Time` clock injected into the manager), refresh-on-401-then-retry, concurrent-access safety via the `-race` flag
-- [ ] T018 Implement `internal/auth/jwt.go` exporting `func MintJWT(creds Credentials, now time.Time) (Token, error)` as a pure function until T016 passes
-- [ ] T019 Implement `internal/auth/manager.go` exporting `type TokenManager`, `func NewTokenManager(creds Credentials, clock func() time.Time) *TokenManager`, and `func (m *TokenManager) Token(ctx context.Context) (string, error)` (the only mutable state in the library; guarded by sync.RWMutex) until T017 passes
-- [ ] T020 [P] Write `internal/auth/README.md` describing the JWT recipe (with reference to research.md R-02), the TokenManager lifecycle, and the absence of any external-secret-store integration (FR-001b)
+- [X] T016 [P] Author the failing JWT minting unit tests in `internal/auth/jwt_test.go`: golden-fixture cases per the R-02 recipe (HS512, `secret = base64(HMAC-SHA512(api_key, key_id))`, `aud=https://apikeys.nutanix.com`, `kid` header, `exp = iat + 300s`), plus negative cases (empty inputs error cleanly, malformed issuer rejected)
+- [X] T017 [P] Author the failing TokenManager unit tests in `internal/auth/manager_test.go`: cached-token reuse, refresh-on-expiry (using a `func() time.Time` clock injected into the manager), refresh-on-401-then-retry, concurrent-access safety via the `-race` flag
+- [X] T018 Implement `internal/auth/jwt.go` exporting `func MintJWT(creds Credentials, now time.Time) (Token, error)` as a pure function until T016 passes
+- [X] T019 Implement `internal/auth/manager.go` exporting `type TokenManager`, `func NewTokenManager(creds Credentials, clock func() time.Time) *TokenManager`, and `func (m *TokenManager) Token(ctx context.Context) (string, error)` (the only mutable state in the library; guarded by sync.RWMutex) until T017 passes
+- [X] T020 [P] Write `internal/auth/README.md` describing the JWT recipe (with reference to research.md R-02), the TokenManager lifecycle, and the absence of any external-secret-store integration (FR-001b)
 
 ### Library: `internal/audit` (FR-020a, FR-020b, FR-020c, FR-020d)
 
-- [ ] T021 [P] Author the failing audit-record unit tests in `internal/audit/audit_test.go`: assert that calling `Record(ctx, AuditRecord{...})` produces exactly one `tflog.Info` entry per the FR-020a schema, that omitted fields (`nc2_task_id`, `nc2_error_code`) do not appear in the JSON, and that `redact.Registry` is applied to every string-valued field before emission (FR-020b); use `terraform-plugin-log/tflogtest` to capture
-- [ ] T022 Implement `internal/audit/audit.go` exporting `type AuditRecord` (flat struct per data-model.md §11) and `func Record(ctx context.Context, r AuditRecord)` (pure-by-construction wrapper over `tflog.Info`) until T021 passes
-- [ ] T023 [P] Write `internal/audit/README.md` documenting the audit-record schema, the routing-via-TF_LOG contract (FR-020c), and the no-private-sink guarantee
+- [X] T021 [P] Author the failing audit-record unit tests in `internal/audit/audit_test.go`: assert that calling `Record(ctx, AuditRecord{...})` produces exactly one `tflog.Info` entry per the FR-020a schema, that omitted fields (`nc2_task_id`, `nc2_error_code`) do not appear in the JSON, and that `redact.Registry` is applied to every string-valued field before emission (FR-020b); use `terraform-plugin-log/tflogtest` to capture
+- [X] T022 Implement `internal/audit/audit.go` exporting `type AuditRecord` (flat struct per data-model.md §11) and `func Record(ctx context.Context, r AuditRecord)` (pure-by-construction wrapper over `tflog.Info`) until T021 passes
+- [X] T023 [P] Write `internal/audit/README.md` documenting the audit-record schema, the routing-via-TF_LOG contract (FR-020c), and the no-private-sink guarantee
 
 ### Library: `internal/client` (FR-003, FR-003a, FR-003b, FR-008, FR-009, FR-020)
 
-- [ ] T024 [P] Author the failing HTTP-client unit tests in `internal/client/client_test.go` using `net/http/httptest`: Authorization header carries the JWT, `User-Agent` is `terraform-provider-nc2/<version>`, 200/201/202/400/401/403/404/406/500 paths each surface the right error shape and audit record, 401 triggers exactly one token refresh + retry
-- [ ] T025 [P] Author the failing TLS unit tests in `internal/client/tls_test.go` (FR-003c): assert no code path constructs `&tls.Config{InsecureSkipVerify: true}` via an import-graph and reflection check, and assert that an HTTPS request to a server with an untrusted certificate fails with a TLS verification error (not a generic network error); the test uses `httptest.NewTLSServer` and a transient empty trust pool
-- [ ] T026 [P] Author the failing task-polling unit tests in `internal/client/tasks_test.go`: 202 then 1× pending then `done` (success), 202 then 1× running then `failed` (error includes NC2 error code), 202 then loop timeout (timeout error includes task id), `task_poll_interval_seconds` and `task_max_timeout_seconds` honored, clock injected
-- [ ] T027 [P] Author the failing error-mapping unit tests in `internal/client/errors_test.go` (FR-020): every documented NC2 status code maps to a user-facing diagnostic with at least HTTP status, NC2 error code (when present), originating endpoint, and remediation hint where well-known
-- [ ] T028 Implement `internal/client/client.go` exporting `type Client`, `func New(cfg Config) (*Client, error)`, `func (c *Client) Do(ctx context.Context, req Request) (Response, error)` using stdlib `net/http`; integrates `auth.TokenManager`, emits one `audit.Record` per call, never sets `InsecureSkipVerify` until T024 + T025 pass
-- [ ] T029 Implement `internal/client/tasks.go` exporting `func (c *Client) PollTask(ctx context.Context, taskID string) (TaskResult, error)` until T026 passes
-- [ ] T030 Implement `internal/client/errors.go` exporting `type APIError`, `func MapError(resp *http.Response, body []byte, endpoint string) error` until T027 passes
-- [ ] T031 [P] Write `internal/client/README.md` documenting the client's contract: pure error mapping, mutable state limited to the `http.Client` pool, async-via-`PollTask` always at-least-once, no escape hatch on TLS
+- [X] T024 [P] Author the failing HTTP-client unit tests in `internal/client/client_test.go` using `net/http/httptest`: Authorization header carries the JWT, `User-Agent` is `terraform-provider-nc2/<version>`, 200/201/202/400/401/403/404/406/500 paths each surface the right error shape and audit record, 401 triggers exactly one token refresh + retry
+- [ ] T025 [P] Author the failing TLS unit tests in `internal/client/tls_test.go` (FR-003c): assert no code path constructs `&tls.Config{InsecureSkipVerify: true}` via an import-graph and reflection check, and assert that an HTTPS request to a server with an untrusted certificate fails with a TLS verification error (not a generic network error); the test uses `httptest.NewTLSServer` and a transient empty trust pool — *partial: source-grep assertion lives in `internal/provider/tls_test.go::TestBuildTLSConfig_NeverSkipsVerify`; the TLS-rejection assertion is still TBD*
+- [X] T026 [P] Author the failing task-polling unit tests in `internal/client/tasks_test.go`: 202 then 1× pending then `done` (success), 202 then 1× running then `failed` (error includes NC2 error code), 202 then loop timeout (timeout error includes task id), `task_poll_interval_seconds` and `task_max_timeout_seconds` honored, clock injected
+- [X] T027 [P] Author the failing error-mapping unit tests in `internal/client/errors_test.go` (FR-020): every documented NC2 status code maps to a user-facing diagnostic with at least HTTP status, NC2 error code (when present), originating endpoint, and remediation hint where well-known
+- [X] T028 Implement `internal/client/client.go` exporting `type Client`, `func New(cfg Config) (*Client, error)`, `func (c *Client) Do(ctx context.Context, req Request) (Response, error)` using stdlib `net/http`; integrates `auth.TokenManager`, emits one `audit.Record` per call, never sets `InsecureSkipVerify` until T024 + T025 pass
+- [X] T029 Implement `internal/client/tasks.go` exporting `func (c *Client) PollTask(ctx context.Context, taskID string) (TaskResult, error)` until T026 passes
+- [X] T030 Implement `internal/client/errors.go` exporting `type APIError`, `func MapError(resp *http.Response, body []byte, endpoint string) error` until T027 passes
+- [X] T031 [P] Write `internal/client/README.md` documenting the client's contract: pure error mapping, mutable state limited to the `http.Client` pool, async-via-`PollTask` always at-least-once, no escape hatch on TLS
 
 ### Provider config: `internal/provider` (FR-001a, FR-003a, FR-003b)
 
-- [ ] T032 [P] Author the failing credential-resolution unit tests in `internal/provider/config_test.go`: precedence (block > env > file), profile selection (`profile` attr, `NC2_PROFILE` env), conflict warning when sources disagree, no warning when sources agree, missing-credentials error
-- [ ] T033 [P] Author the failing TLS-config unit tests in `internal/provider/tls_test.go`: default trust store used when `ca_bundle` empty; PEM bundle appended (not replaced) when set; invalid PEM produces actionable plan-time error with path and offset (FR-003b)
+- [X] T032 [P] Author the failing credential-resolution unit tests in `internal/provider/config_test.go`: precedence (block > env > file), profile selection (`profile` attr, `NC2_PROFILE` env), conflict warning when sources disagree, no warning when sources agree, missing-credentials error
+- [X] T033 [P] Author the failing TLS-config unit tests in `internal/provider/tls_test.go`: default trust store used when `ca_bundle` empty; PEM bundle appended (not replaced) when set; invalid PEM produces actionable plan-time error with path and offset (FR-003b)
 - [ ] T034 [P] Author the failing import-graph test in `internal/provider/imports_test.go` (FR-001b): walks the entire module dependency tree and fails if any package path matches `vault`, `secretsmanager`, `keyvault`, `secret-manager`, `1password`
-- [ ] T035 Implement `internal/provider/config.go` exporting `type ProviderConfig`, `func Resolve(ctx context.Context, block ProviderBlock, env Env, file File) (ProviderConfig, diag.Diagnostics)` as a pure function until T032 passes
-- [ ] T036 Implement `internal/provider/tls.go` exporting `func BuildTLSConfig(caBundlePath string) (*tls.Config, error)` (never sets `InsecureSkipVerify`) until T033 passes
-- [ ] T037 Implement `internal/provider/provider.go` exporting `func New() provider.Provider` wiring the framework's schema, mapping `nc2.Schema()` to the `contracts/provider.json` shape, and calling `Resolve` + `BuildTLSConfig` in `Configure`
-- [ ] T038 [P] Write `internal/provider/README.md` listing every provider-level configuration attribute, its precedence rules, and pointers to `auth`, `client`, `redact`, `audit`
+- [X] T035 Implement `internal/provider/config.go` exporting `type ProviderConfig`, `func Resolve(ctx context.Context, block ProviderBlock, env Env, file File) (ProviderConfig, diag.Diagnostics)` as a pure function until T032 passes
+- [X] T036 Implement `internal/provider/tls.go` exporting `func BuildTLSConfig(caBundlePath string) (*tls.Config, error)` (never sets `InsecureSkipVerify`) until T033 passes
+- [X] T037 Implement `internal/provider/provider.go` exporting `func New() provider.Provider` wiring the framework's schema, mapping `nc2.Schema()` to the `contracts/provider.json` shape, and calling `Resolve` + `BuildTLSConfig` in `Configure`
+- [X] T038 [P] Write `internal/provider/README.md` listing every provider-level configuration attribute, its precedence rules, and pointers to `auth`, `client`, `redact`, `audit`
 
 ### CI tools: `tools/coverage-check` (FR-021, FR-021a) and `tools/sensitive-lint` (FR-002a)
 
@@ -99,12 +116,12 @@ Single Go module at the repository root (per `plan.md`). All paths below are rel
 - [ ] T040 [P] Author the failing sensitive-lint unit tests in `tools/sensitive-lint/main_test.go`: pattern hits without registry entry → fail; registry entry without OpenAPI counterpart → fail (drift); unclassified field → MEDIUM warning in non-strict, fail in strict
 - [ ] T041 Implement `tools/coverage-check/main.go` using `kin-openapi` (behind tools build tag) until T039 passes; produces `tools/coverage-check/output/coverage-report.json`
 - [ ] T042 Implement `tools/sensitive-lint/main.go` using `kin-openapi` until T040 passes
-- [ ] T043 [P] Author `internal/oapi/mapping.go` (used by tools and runtime): exported `type Mapping struct { OperationID, TerraformOp string }` and a discovery helper that scans `internal/{resources,datasources,actions}/*/openapi_mapping.go` files for `var OperationMappings []oapi.Mapping`; ship its own unit test fixture
+- [X] T043 [P] Author `internal/oapi/mapping.go` (used by tools and runtime): exported `type Mapping struct { OperationID, TerraformOp string }` and a discovery helper that scans `internal/{resources,datasources,actions}/*/openapi_mapping.go` files for `var OperationMappings []oapi.Mapping`; ship its own unit test fixture
 
 ### Entry point
 
 - [ ] T044 Author the failing provider-server smoke test in `main_test.go`: assert `main` registers the provider via `providerserver.Serve` with the correct address `registry.terraform.io/<namespace>/nc2`
-- [ ] T045 Implement `main.go` until T044 passes; wires `internal/provider.New`
+- [X] T045 Implement `main.go` until T044 passes; wires `internal/provider.New`
 
 **Checkpoint**: All foundational libraries are unit-tested green; OpenAPI coverage tool runs and reports `49 total, 0 covered, 49 uncovered` (expected at this point). User story implementation can now begin.
 
@@ -190,9 +207,9 @@ Single Go module at the repository root (per `plan.md`). All paths below are rel
 
 ### Shared cluster scaffolding
 
-- [ ] T091 [US2] Author failing shared-cluster-helpers unit tests in `internal/resources/clustershared/helpers_test.go` (package `clustershared`): shared schema attributes per data-model.md §4 "Common cluster schema", attribute-to-endpoint update-routing function (per data-model.md "Update routing ordering"), pure function `RouteUpdate(diff Diff) []Operation` returning the ordered op sequence
-- [ ] T092 [US2] Implement `internal/resources/clustershared/helpers.go` (pure functions only — no I/O) until T091 passes
-- [ ] T093 [P] [US2] Write `internal/resources/clustershared/README.md` documenting the shared schema and the update-routing precedence
+- [X] T091 [US2] Author failing shared-cluster-helpers unit tests in `internal/resources/clustershared/helpers_test.go` (package `clustershared`): shared schema attributes per data-model.md §4 "Common cluster schema", attribute-to-endpoint update-routing function (per data-model.md "Update routing ordering"), pure function `RouteUpdate(diff Diff) []Operation` returning the ordered op sequence
+- [X] T092 [US2] Implement `internal/resources/clustershared/helpers.go` (pure functions only — no I/O) until T091 passes
+- [X] T093 [P] [US2] Write `internal/resources/clustershared/README.md` documenting the shared schema and the update-routing precedence
 
 ### Managed resource: `nc2_aws_cluster`
 
@@ -292,8 +309,8 @@ Single Go module at the repository root (per `plan.md`). All paths below are rel
 
 **Depends on**: Phase 4 (US2 cluster resources). Touches files in `internal/resources/aws_cluster/`, `azure_cluster/`, `gcp_cluster/` but does not break their existing tests.
 
-- [ ] T152 [P] [US4] Author failing unit tests in `internal/resources/clustershared/desired_state_test.go`: pure function `func MapDesiredStateTransition(prev, next string) (Op, error)` returning `OpHibernate`, `OpResume`, or `OpNoop`; rejects invalid transitions; rejects "running" → "running" as no-op
-- [ ] T153 [US4] Implement `internal/resources/clustershared/desired_state.go` until T152 passes
+- [X] T152 [P] [US4] Author failing unit tests in `internal/resources/clustershared/desired_state_test.go`: pure function `func MapDesiredStateTransition(prev, next string) (Op, error)` returning `OpHibernate`, `OpResume`, or `OpNoop`; rejects invalid transitions; rejects "running" → "running" as no-op
+- [X] T153 [US4] Implement `internal/resources/clustershared/desired_state.go` until T152 passes
 - [ ] T154 [P] [US4] Author failing AWS hibernate/resume unit tests in `internal/resources/aws_cluster/hibernate_test.go`: `desired_state` diff drives the matching endpoint after all other update operations (per the ordering in data-model.md §4); plan-after-apply is clean; rejecting "hibernated" + "capacity change" in the same diff at plan time
 - [ ] T155 [P] [US4] Author failing Azure hibernate/resume unit tests in `internal/resources/azure_cluster/hibernate_test.go` mirroring T154
 - [ ] T156 [P] [US4] Author failing GCP hibernate/resume unit tests in `internal/resources/gcp_cluster/hibernate_test.go` mirroring T154
