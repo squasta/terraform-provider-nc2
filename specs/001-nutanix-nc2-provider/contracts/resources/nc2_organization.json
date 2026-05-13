@@ -1,0 +1,111 @@
+{
+  "kind": "resource",
+  "type_name": "nc2_organization",
+  "description": "Manages an NC2 organization, the root of the resource hierarchy. Owns cloud accounts. Terminate uses PATCH /organizations/{id}/terminate (NOT DELETE).",
+  "schema_version": 0,
+  "attributes": {
+    "id": {
+      "type": "String",
+      "mode": "Computed",
+      "sensitive": false,
+      "description": "NC2-assigned identifier for the organization (UUID).",
+      "plan_modifiers": ["UseStateForUnknown"],
+      "nc2_mapping": { "request": null, "response": "data.id" }
+    },
+    "name": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "Human-readable organization name.",
+      "validators": [
+        "string.LengthBetween(1, 128)"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.name", "response": "data.name" }
+    },
+    "description": {
+      "type": "String",
+      "mode": "Optional",
+      "sensitive": false,
+      "description": "Optional human-readable description.",
+      "validators": [
+        "string.LengthAtMost(2048)"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.description", "response": "data.description" }
+    },
+    "state": {
+      "type": "String",
+      "mode": "Computed",
+      "sensitive": false,
+      "description": "Current lifecycle state of the organization.",
+      "validators": [
+        "string.OneOf('active', 'terminating', 'terminated')"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": null, "response": "data.state" }
+    },
+    "created_at": {
+      "type": "String",
+      "mode": "Computed",
+      "sensitive": false,
+      "description": "RFC 3339 timestamp of organization creation.",
+      "plan_modifiers": ["UseStateForUnknown"],
+      "nc2_mapping": { "request": null, "response": "data.created_at" }
+    },
+    "updated_at": {
+      "type": "String",
+      "mode": "Computed",
+      "sensitive": false,
+      "description": "RFC 3339 timestamp of the most recent modification.",
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": null, "response": "data.updated_at" }
+    }
+  },
+  "lifecycle": {
+    "Create": {
+      "operationIds": ["CPanelWeb.Api.OrganizationController.create"],
+      "request_method": "POST",
+      "request_path": "/organizations",
+      "notes": "Returns 201 with the created object; not async."
+    },
+    "Read": {
+      "operationIds": ["CPanelWeb.Api.OrganizationController.show"],
+      "request_method": "GET",
+      "request_path": "/organizations/{id}",
+      "not_found_behavior": "remove from state (FR-009)"
+    },
+    "Update": {
+      "operationIds": ["CPanelWeb.Api.OrganizationController.update"],
+      "request_method": "PATCH",
+      "request_path": "/organizations/{id}",
+      "field_routing": {
+        "name": "CPanelWeb.Api.OrganizationController.update",
+        "description": "CPanelWeb.Api.OrganizationController.update"
+      },
+      "notes": "Canonical PATCH per FR-010b. PUT variant (operationId update (2)) is implemented in internal/client but is NOT called from Update."
+    },
+    "Delete": {
+      "operationIds": ["CPanelWeb.Api.OrganizationController.terminate"],
+      "request_method": "PATCH",
+      "request_path": "/organizations/{id}/terminate",
+      "notes": "Uses PATCH terminate, not DELETE. After successful call, Read polls until 404 then removes from state."
+    },
+    "ImportState": {
+      "id_format": "<organization_uuid>",
+      "post_import_plan_must_be_clean": true,
+      "fr_reference": "FR-013, SC-009"
+    }
+  },
+  "sensitive_registry": [],
+  "behavioral_invariants": [
+    {
+      "id": "FR-018-drift-free",
+      "description": "Plan immediately after apply MUST report no changes."
+    },
+    {
+      "id": "FR-019-clean-destroy",
+      "description": "After destroy, plan MUST report no resources and no changes."
+    }
+  ]
+}

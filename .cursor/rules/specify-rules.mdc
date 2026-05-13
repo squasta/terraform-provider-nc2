@@ -4,5 +4,17 @@ alwaysApply: true
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+shell commands, and other important information, read the current plan at
+`specs/001-nutanix-nc2-provider/plan.md`.
+
+Companion artifacts in the same directory:
+- `spec.md` — feature specification (user stories, FRs, success criteria)
+- `research.md` — Phase 0 research outputs (10 resolved questions)
+- `data-model.md` — Phase 1 entity → Terraform schema mapping with NC2 OpenAPI operation cross-reference
+- `contracts/` — Phase 1 interface contracts (provider config, canonical resource/data source/action)
+- `quickstart.md` — developer onramp (build, test, TDD loop)
+- `checklists/requirements.md` — spec quality checklist and revision log
+
+Authoritative API source: `openapi/openapi.json` at the repo root.
+Project constitution: `.specify/memory/constitution.md` (v1.0.0) — Library-First, TDD (NON-NEGOTIABLE), Functional patterns.
 <!-- SPECKIT END -->

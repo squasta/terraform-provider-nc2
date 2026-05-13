@@ -1,0 +1,44 @@
+{
+  "kind": "data_source",
+  "type_name": "nc2_cloud_account_regions",
+  "description": "Lists regions enabled on a specific cloud account. Read-only; sorted deterministically by region id (FR-015).",
+  "schema_version": 0,
+  "attributes": {
+    "cloud_account_id": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "Cloud account UUID whose enabled regions should be listed.",
+      "validators": ["string.RegexMatches('^[0-9a-fA-F-]{36}$')"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "path:{cloud_account_id}", "response": null }
+    },
+    "regions": {
+      "type": "List<Object{id:String, region:String, state:String, created_at:String, updated_at:String}>",
+      "mode": "Computed",
+      "sensitive": false,
+      "description": "Regions currently enabled on the cloud account. Stable order: ascending by id.",
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": null, "response": "data[]" }
+    }
+  },
+  "lifecycle": {
+    "Read": {
+      "operationIds": ["CPanelWeb.Api.RegionController.index"],
+      "request_method": "GET",
+      "request_path": "/cloud-accounts/{cloud_account_id}/regions",
+      "ordering": "stable ascending by `id` (FR-015)"
+    }
+  },
+  "sensitive_registry": [],
+  "behavioral_invariants": [
+    {
+      "id": "FR-015-deterministic-order",
+      "description": "Repeated reads in the same plan/apply MUST return results in identical order."
+    },
+    {
+      "id": "FR-020a-audit",
+      "description": "The Read operation emits exactly one tflog audit record with terraform_op = 'data.nc2_cloud_account_regions.Read'."
+    }
+  ]
+}

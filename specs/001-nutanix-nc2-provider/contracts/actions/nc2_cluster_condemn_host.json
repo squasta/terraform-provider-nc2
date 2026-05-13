@@ -1,0 +1,58 @@
+{
+  "kind": "action",
+  "type_name": "nc2_cluster_condemn_host",
+  "description": "Imperative one-shot action that condemns a specific host in an NC2 cluster (mark it for removal). Wraps POST /clusters/{id}/condemn-host. Async: the response includes a task id which the provider polls to completion before returning the result.",
+  "schema_version": 0,
+  "attributes": {
+    "cluster_id": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "Target cluster UUID.",
+      "validators": ["string.RegexMatches('^[0-9a-fA-F-]{36}$')"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "path:{id}", "response": null }
+    },
+    "host_id": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "UUID of the cluster host to condemn.",
+      "validators": ["string.RegexMatches('^[0-9a-fA-F-]{36}$')"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.host_id", "response": null }
+    },
+    "result": {
+      "type": "Object{task_id:String, status:String, http_status:Int64, error_code:String, error_message:String}",
+      "mode": "Computed",
+      "sensitive": false,
+      "description": "Structured outcome of the action invocation, including the polled NC2 task identifier and any error fields if the task did not complete with status `done`.",
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": null, "response": "derived (task poll result)" }
+    }
+  },
+  "lifecycle": {
+    "Invoke": {
+      "operationIds": ["CPanelWeb.Api.ClusterController.condemn_host"],
+      "request_method": "POST",
+      "request_path": "/clusters/{id}/condemn-host",
+      "async": true,
+      "task_polling": "internal/client.PollTask, FR-008"
+    }
+  },
+  "sensitive_registry": [],
+  "behavioral_invariants": [
+    {
+      "id": "FR-017-task-result-exposed",
+      "description": "The action's `result` attribute MUST surface task_id, status, http_status, error_code, and error_message so downstream Terraform code can reference them."
+    },
+    {
+      "id": "FR-020a-audit",
+      "description": "The Invoke operation emits exactly one tflog audit record with terraform_op = 'nc2_cluster_condemn_host.Invoke' for the action POST itself, plus additional audit records for each task-poll call."
+    },
+    {
+      "id": "US5-scenario-1",
+      "description": "Given an applied cluster, When the user invokes this action with a host_id, Then the provider calls /condemn-host and reports task success or failure."
+    }
+  ]
+}

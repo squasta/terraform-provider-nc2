@@ -1,0 +1,258 @@
+{
+  "kind": "resource",
+  "type_name": "nc2_aws_cluster",
+  "description": "Manages an NC2 cluster on AWS. Full CRUD lifecycle including in-place updates for capacity, SSH key, license, resource tags, and the AWS-only access policy. Hibernate/resume exposed via the desired_state attribute. Async create/update/delete are handled by polling /tasks/{id}.",
+  "schema_version": 0,
+  "attributes": {
+    "id": {
+      "type": "String",
+      "mode": "Computed",
+      "sensitive": false,
+      "description": "NC2-assigned cluster UUID.",
+      "plan_modifiers": ["UseStateForUnknown"],
+      "nc2_mapping": { "request": null, "response": "data.id" }
+    },
+    "organization_id": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "Owning organization UUID.",
+      "validators": ["string.RegexMatches('^[0-9a-fA-F-]{36}$')"],
+      "plan_modifiers": ["RequiresReplace"],
+      "nc2_mapping": { "request": "data.organization_id", "response": "data.organization_id" }
+    },
+    "cloud_account_id": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "Owning cloud account UUID.",
+      "validators": ["string.RegexMatches('^[0-9a-fA-F-]{36}$')"],
+      "plan_modifiers": ["RequiresReplace"],
+      "nc2_mapping": { "request": "data.cloud_account_id", "response": "data.cloud_account_id" }
+    },
+    "name": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "DNS-label-safe cluster name; immutable after create.",
+      "validators": ["string.LengthBetween(1, 64)", "string.RegexMatches('^[a-z0-9-]+$')"],
+      "plan_modifiers": ["RequiresReplace"],
+      "nc2_mapping": { "request": "data.name", "response": "data.name" }
+    },
+    "region": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "AWS region identifier (e.g. eu-central-1).",
+      "validators": ["string.LengthAtLeast(1)"],
+      "plan_modifiers": ["RequiresReplace"],
+      "nc2_mapping": { "request": "data.region", "response": "data.region" }
+    },
+    "use_case": {
+      "type": "String",
+      "mode": "Optional+Default",
+      "default": "general",
+      "sensitive": false,
+      "description": "Workload classification (general or production).",
+      "validators": ["string.OneOf('general','production')"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.use_case", "response": "data.use_case" }
+    },
+    "host_access_ssh_key": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "Name of the SSH key registered on the cloud account that NC2 will install on hosts.",
+      "validators": ["string.LengthAtLeast(1)"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.host_access_ssh_key", "response": "data.host_access_ssh_key" }
+    },
+    "license": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "NC2 license tier (e.g. aos).",
+      "validators": ["string.LengthAtLeast(1)"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.license", "response": "data.license" }
+    },
+    "aos_version": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "AOS software version (e.g. 6.7).",
+      "validators": ["string.RegexMatches('^[0-9]+\\\\.[0-9]+(\\\\.[0-9]+)?$')"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.aos_version", "response": "data.aos_version" }
+    },
+    "software_tier": {
+      "type": "String",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "Software tier (e.g. pro).",
+      "validators": ["string.LengthAtLeast(1)"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.software_tier", "response": "data.software_tier" }
+    },
+    "capacity": {
+      "type": "List<Object{host_type:String, number_of_hosts:Int64, node_type:String?, advanced_settings:Object?}>",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "Ordered list of host groups. Updates route to POST /clusters/{id}/update-capacity.",
+      "validators": ["list.SizeAtLeast(1)"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.capacity", "response": "data.capacity" }
+    },
+    "redundancy": {
+      "type": "Object{factor:Int64}",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "Redundancy factor.",
+      "validators": ["int64.OneOf(1, 2)"],
+      "plan_modifiers": ["RequiresReplace"],
+      "nc2_mapping": { "request": "data.redundancy", "response": "data.redundancy" }
+    },
+    "network": {
+      "type": "Object{mode:String, availability_zone:String, vpc_cidr:String?, management_services_access_policy:Object?, prism_element_access_policy:Object?, aws:Object?}",
+      "mode": "Required",
+      "sensitive": false,
+      "description": "Network configuration. Most subfields force replacement; access-policy subobjects are in-place mutable through the cluster Update path.",
+      "plan_modifiers": ["RequiresReplace (with field-level exceptions)"],
+      "nc2_mapping": { "request": "data.network", "response": "data.network" }
+    },
+    "access_policy": {
+      "type": "Object{...}",
+      "mode": "Optional",
+      "sensitive": false,
+      "description": "AWS-only access policy. Setting this attribute on nc2_azure_cluster or nc2_gcp_cluster is rejected at plan time (FR-010a). Updates route to POST /clusters/{id}/update-access-policy.",
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.access_policy", "response": "data.access_policy" }
+    },
+    "resource_tags": {
+      "type": "Map<String>",
+      "mode": "Optional",
+      "sensitive": false,
+      "description": "Cloud-side resource tags. Updates route to POST /clusters/{id}/update-resource-tags.",
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "data.resource_tags", "response": "data.resource_tags" }
+    },
+    "desired_state": {
+      "type": "String",
+      "mode": "Optional+Default",
+      "default": "running",
+      "sensitive": false,
+      "description": "Desired runtime state. Transition running -> hibernated invokes POST /clusters/{id}/hibernate; hibernated -> running invokes POST /clusters/{id}/resume (FR-012, US4).",
+      "validators": ["string.OneOf('running','hibernated')"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "derived (hibernate/resume endpoints)", "response": "derived from data.state" }
+    },
+    "state": {
+      "type": "String",
+      "mode": "Computed",
+      "sensitive": false,
+      "description": "Observed cluster lifecycle state.",
+      "validators": ["string.OneOf('provisioning','running','hibernating','hibernated','resuming','terminating','terminated','failed')"],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": null, "response": "data.state" }
+    },
+    "created_at": {
+      "type": "String",
+      "mode": "Computed",
+      "sensitive": false,
+      "description": "RFC 3339 cluster creation timestamp.",
+      "plan_modifiers": ["UseStateForUnknown"],
+      "nc2_mapping": { "request": null, "response": "data.created_at" }
+    },
+    "updated_at": {
+      "type": "String",
+      "mode": "Computed",
+      "sensitive": false,
+      "description": "RFC 3339 most-recent-modification timestamp.",
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": null, "response": "data.updated_at" }
+    }
+  },
+  "lifecycle": {
+    "Create": {
+      "operationIds": ["CPanelWeb.Api.ClusterController.create_aws"],
+      "request_method": "POST",
+      "request_path": "/clusters/aws",
+      "async": true,
+      "task_polling": "internal/client.PollTask, FR-008"
+    },
+    "Read": {
+      "operationIds": ["CPanelWeb.Api.ClusterController.show"],
+      "request_method": "GET",
+      "request_path": "/clusters/{id}",
+      "not_found_behavior": "remove from state (FR-009)"
+    },
+    "Update": {
+      "operationIds": [
+        "CPanelWeb.Api.ClusterController.update",
+        "CPanelWeb.Api.ClusterController.update_capacity",
+        "CPanelWeb.Api.ClusterController.update_ssh_key",
+        "CPanelWeb.Api.ClusterController.update_license",
+        "CPanelWeb.Api.ClusterController.update_resource_tags",
+        "CPanelWeb.Api.ClusterController.update_access_policy",
+        "CPanelWeb.Api.ClusterController.hibernate",
+        "CPanelWeb.Api.ClusterController.resume"
+      ],
+      "field_routing": {
+        "capacity": "CPanelWeb.Api.ClusterController.update_capacity",
+        "host_access_ssh_key": "CPanelWeb.Api.ClusterController.update_ssh_key",
+        "license": "CPanelWeb.Api.ClusterController.update_license",
+        "aos_version": "CPanelWeb.Api.ClusterController.update_license",
+        "software_tier": "CPanelWeb.Api.ClusterController.update_license",
+        "resource_tags": "CPanelWeb.Api.ClusterController.update_resource_tags",
+        "access_policy": "CPanelWeb.Api.ClusterController.update_access_policy",
+        "desired_state:running->hibernated": "CPanelWeb.Api.ClusterController.hibernate",
+        "desired_state:hibernated->running": "CPanelWeb.Api.ClusterController.resume",
+        "*generic*": "CPanelWeb.Api.ClusterController.update"
+      },
+      "ordering": [
+        "update_license",
+        "update_ssh_key",
+        "update_capacity",
+        "update_resource_tags",
+        "update_access_policy",
+        "PATCH /clusters/{id} (generic)",
+        "hibernate-or-resume"
+      ],
+      "notes": "PUT variant (CPanelWeb.Api.ClusterController.update (2)) is implemented in internal/client but is NOT called from Update (FR-010b)."
+    },
+    "Delete": {
+      "operationIds": ["CPanelWeb.Api.ClusterController.terminate"],
+      "request_method": "POST",
+      "request_path": "/clusters/{id}/terminate",
+      "async": true,
+      "task_polling": "internal/client.PollTask"
+    },
+    "ImportState": {
+      "id_format": "<cluster_uuid>",
+      "post_import_plan_must_be_clean": true,
+      "fr_reference": "FR-013, SC-009"
+    }
+  },
+  "sensitive_registry": [
+    "network.management_services_access_policy.ip_addresses",
+    "network.prism_element_access_policy.ip_addresses"
+  ],
+  "behavioral_invariants": [
+    {
+      "id": "FR-010a-aws-only-access-policy",
+      "description": "Setting access_policy is permitted only on nc2_aws_cluster. The Azure and GCP cluster resources MUST NOT expose this attribute; their contract files omit it entirely."
+    },
+    {
+      "id": "FR-012-hibernate-resume",
+      "description": "Changing desired_state between 'running' and 'hibernated' routes to the hibernate/resume endpoints respectively; no other state transitions are user-initiated."
+    },
+    {
+      "id": "FR-018-drift-free",
+      "description": "Plan immediately after apply MUST report no changes."
+    },
+    {
+      "id": "FR-019-clean-destroy",
+      "description": "After destroy, plan MUST report no resources and no changes."
+    }
+  ]
+}

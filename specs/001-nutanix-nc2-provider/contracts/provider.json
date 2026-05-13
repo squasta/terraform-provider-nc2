@@ -1,0 +1,134 @@
+{
+  "kind": "provider",
+  "type_name": "nc2",
+  "description": "Configures the Nutanix Cloud Clusters (NC2) Terraform provider. All authentication inputs are sensitive and resolved per FR-001a (block > env > credentials_file). TLS verification is mandatory per FR-003b.",
+  "schema_version": 0,
+  "attributes": {
+    "api_key": {
+      "type": "String",
+      "mode": "Optional",
+      "sensitive": true,
+      "description": "MyNutanix API key. May also be supplied via the NC2_API_KEY environment variable or via the credentials_file. The provider block takes precedence (FR-001a).",
+      "validators": [
+        "string.LengthAtLeast(1)"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "auth.api_key (HMAC secret input)", "response": null }
+    },
+    "key_id": {
+      "type": "String",
+      "mode": "Optional",
+      "sensitive": true,
+      "description": "MyNutanix API key ID. Used as the JWT `kid` header and as the HMAC body per the NC2 JWT signing recipe. May be supplied via NC2_KEY_ID or credentials_file (FR-001a).",
+      "validators": [
+        "string.LengthAtLeast(1)"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "auth.key_id (JWT kid header + HMAC body input)", "response": null }
+    },
+    "issuer": {
+      "type": "String",
+      "mode": "Optional",
+      "sensitive": true,
+      "description": "Issuer UUID used in the JWT `iss` claim (FR-001). May be supplied via NC2_ISSUER or credentials_file (FR-001a).",
+      "validators": [
+        "string.RegexMatches('^[0-9a-fA-F-]{36}$')"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": { "request": "auth.issuer (JWT iss claim)", "response": null }
+    },
+    "credentials_file": {
+      "type": "String",
+      "mode": "Optional",
+      "sensitive": false,
+      "description": "Path to a TOML/INI credentials file. Defaults to ~/.nc2/credentials when not set. Read at provider Configure() time; precedence is below block and env vars (FR-001a).",
+      "validators": [
+        "string.LengthAtLeast(1)"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": null
+    },
+    "profile": {
+      "type": "String",
+      "mode": "Optional",
+      "sensitive": false,
+      "description": "Profile name to select within the credentials_file (default profile name: `default`). May also be supplied via the NC2_PROFILE environment variable.",
+      "validators": [
+        "string.LengthAtLeast(1)"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": null
+    },
+    "base_url": {
+      "type": "String",
+      "mode": "Optional+Default",
+      "default": "https://cloud.nutanix.com/api/v2",
+      "sensitive": false,
+      "description": "Override for the NC2 API base URL. Defaults to the public NC2 endpoint. Set this only for proxied or test environments (FR-003a).",
+      "validators": [
+        "string.RegexMatches('^https?://')"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": null
+    },
+    "ca_bundle": {
+      "type": "String",
+      "mode": "Optional",
+      "sensitive": false,
+      "description": "Path to a PEM file containing additional trusted root CAs. Contents are APPENDED to (not replacing) the OS trust store at startup. The provider fails plan-time validation if the file is unreadable or not valid PEM (FR-003b). There is NO insecure_skip_verify option in any build.",
+      "validators": [
+        "string.LengthAtLeast(1)"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": null
+    },
+    "task_poll_interval_seconds": {
+      "type": "Int64",
+      "mode": "Optional+Default",
+      "default": 60,
+      "sensitive": false,
+      "description": "Interval at which the provider polls NC2 task status during async operations (FR-003).",
+      "validators": [
+        "int64.AtLeast(1)",
+        "int64.AtMost(600)"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": null
+    },
+    "task_max_timeout_seconds": {
+      "type": "Int64",
+      "mode": "Optional+Default",
+      "default": 7200,
+      "sensitive": false,
+      "description": "Maximum total time the provider will poll a single NC2 task before returning a timeout error referencing the task ID (FR-003).",
+      "validators": [
+        "int64.AtLeast(60)",
+        "int64.AtMost(86400)"
+      ],
+      "plan_modifiers": [],
+      "nc2_mapping": null
+    }
+  },
+  "behavioral_invariants": [
+    {
+      "id": "FR-001a-precedence",
+      "description": "When the same credential attribute is supplied by more than one source AND values differ, the provider MUST emit a non-fatal warning naming both sources and use the higher-precedence value."
+    },
+    {
+      "id": "FR-001b-no-secret-store-imports",
+      "description": "The provider binary MUST NOT import any client library for external secret managers. Enforced by a CI import-graph check."
+    },
+    {
+      "id": "FR-002-redaction",
+      "description": "All four credential attributes (api_key, key_id, issuer, derived JWT) MUST be redacted in plan output, apply output, persisted state, and debug logs at every verbosity level."
+    },
+    {
+      "id": "FR-003b-strict-tls",
+      "description": "No code path may construct an http.Client with InsecureSkipVerify=true. Enforced by FR-003c unit test."
+    },
+    {
+      "id": "FR-020a-audit",
+      "description": "Every outbound NC2 HTTP call must emit exactly one tflog.Info audit record with the FR-020a field set."
+    }
+  ]
+}
