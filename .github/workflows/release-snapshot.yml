@@ -22,7 +22,9 @@ permissions:
   contents: read
 
 env:
-  GO_VERSION: '1.24'
+  # Must satisfy `go.mod`'s `go` directive AND `toolchain` floor;
+  # bump in lockstep with go.mod when we adopt a newer Go release.
+  GO_VERSION: '1.26.x'
 
 jobs:
   snapshot:
