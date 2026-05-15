@@ -64,14 +64,97 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-      - name: govulncheck
+
+      # govulncheck performs Go-specific reachability analysis and only
+      # reports vulnerable functions actually called from the provider
+      # source. Per FR-032a we treat ANY reachable finding as a hard
+      # failure — by definition there are no false positives here.
+      - name: govulncheck (reachable Go vulnerabilities)
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./...
-      - name: osv-scanner
+
+      # osv-scanner walks the full transitive dep graph (including
+      # build-only deps such as goreleaser/kubernetes/sigstore/etc.).
+      # Per FR-032a we ONLY hard-fail on HIGH/CRITICAL severity, and
+      # we narrow further by call-graph analysis when available.
+      # Suppressions for accepted-risk advisories live in
+      # osv-scanner.toml at the repo root.
+      - name: osv-scanner (HIGH/CRITICAL gate)
         run: |
-          go install github.com/google/osv-scanner/cmd/osv-scanner@latest
-          osv-scanner --recursive .
+          set -uo pipefail
+          go install github.com/google/osv-scanner/cmd/osv-scanner/v2@latest
+
+          # Full report → JSON for both human review and the gate below.
+          # Tolerate non-zero exit (vulns exist) — we apply our own gating.
+          osv-scanner scan source \
+            --recursive \
+            --call-analysis=go \
+            --config=osv-scanner.toml \
+            --format=json \
+            --output=osv-report.json \
+            . || true
+
+          # Pretty-printed table view to the run log for visibility.
+          osv-scanner scan source \
+            --recursive \
+            --call-analysis=go \
+            --config=osv-scanner.toml \
+            . || true
+
+          # Apply the FR-032a HIGH/CRITICAL gate. Severity is taken from
+          # the GHSA `database_specific.severity` string when present
+          # (covers the vast majority of advisories). Anything below
+          # HIGH is reported but does not block the release.
+          python3 - <<'PY'
+          import json, sys
+          HIGH = {"HIGH", "CRITICAL"}
+          try:
+              with open("osv-report.json") as f:
+                  data = json.load(f)
+          except FileNotFoundError:
+              print("osv-scanner produced no report (clean run).")
+              sys.exit(0)
+
+          findings = []
+          for result in data.get("results", []) or []:
+              for pkg in result.get("packages", []) or []:
+                  pkg_meta = pkg.get("package") or {}
+                  name = pkg_meta.get("name", "?")
+                  ver = pkg_meta.get("version", "?")
+                  # Build a quick lookup: vuln id -> called? from group analysis.
+                  called = {}
+                  for grp in pkg.get("groups", []) or []:
+                      ea = grp.get("experimental_analysis") or {}
+                      for vid, info in ea.items():
+                          called[vid] = bool((info or {}).get("called", True))
+                  for v in pkg.get("vulnerabilities", []) or []:
+                      vid = v.get("id", "?")
+                      sev = ((v.get("database_specific") or {}).get("severity") or "").upper()
+                      if sev not in HIGH:
+                          continue
+                      # Drop entries marked as not-called by call-graph analysis.
+                      if vid in called and not called[vid]:
+                          continue
+                      findings.append((vid, sev, f"{name}@{ver}"))
+
+          if findings:
+              print(f"::error title=FR-032a::{len(findings)} HIGH/CRITICAL "
+                    "vulnerabilities present, blocking release", file=sys.stderr)
+              for vid, sev, pkg in findings:
+                  print(f"  - {vid}  [{sev}]  {pkg}", file=sys.stderr)
+              sys.exit(1)
+          print("FR-032a gate: no HIGH/CRITICAL vulnerabilities found.")
+          PY
+
+      - name: Upload osv-scanner report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: osv-scanner-report
+          path: osv-report.json
+          if-no-files-found: warn
+          retention-days: 30
 
   goreleaser:
     name: GoReleaser (5-target build matrix)

@@ -3,10 +3,14 @@
 ## Per task T006: gates the build on `make lint`, `make test`, `make coverage`,
 ## `make openapi-coverage`, `make sensitive-lint-strict`, `make vuln`.
 ##
-## Matrix: the latest two supported Go majors. plan.md/T006 originally
-## documented "Go 1.24 and 1.23"; 1.23 reached end-of-life shortly after that,
-## so the matrix is bumped here to 1.24 (project minimum from go.mod) plus
-## the current stable (1.26). Adjust as new Go versions ship.
+## Matrix: the project's minimum supported Go (per `go.mod`'s `go`
+## directive — currently 1.26.3) plus any newer release that has
+## reached general availability. plan.md/T006 originally documented
+## "Go 1.24 and 1.23"; both have since reached end-of-life and the
+## minimum supported Go has been raised to 1.26.3 to (a) match the
+## `toolchain` directive in `go.mod` and (b) eliminate stdlib CVEs
+## that osv-scanner was flagging against the older runtime. Add new
+## entries here as future Go majors ship.
 
 name: CI
 
@@ -31,7 +35,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ["1.24.x", "1.26.x"]
+        go: ["1.26.x"]
     steps:
       - uses: actions/checkout@v4
         with:

@@ -46,12 +46,12 @@ Single Go module at the repository root (per `plan.md`). All paths below are rel
 
 **Purpose**: Initialize the Go module, repo layout, toolchain, and CI scaffolding so every later phase has a working build.
 
-- [X] T001 Create top-level Go module: `go mod init github.com/<org>/terraform-provider-nc2` (placeholder org), commit go.mod / go.sum with Go 1.24 toolchain pin
+- [X] T001 Create top-level Go module: `go mod init github.com/<org>/terraform-provider-nc2` (placeholder org), commit go.mod / go.sum with Go 1.24 toolchain pin _(superseded 2026-05: minimum Go raised to 1.26.3 in `go.mod`'s `go` directive — see CHANGELOG)_
 - [X] T002 Create the directory layout from plan.md `### Source Code` section: `internal/{provider,auth,client,audit,redact,resources,datasources,actions}/`, `tools/{coverage-check,sensitive-lint}/`, `tests/{acceptance,fixtures}/`, `examples/`, `docs/`, `.github/workflows/`, `.githooks/` — each with a placeholder `.gitkeep` where empty
 - [X] T003 [P] Add tools-only dependency manifest at `tools.go` with `// +build tools` (kin-openapi, tfplugindocs, golangci-lint, govulncheck, osv-scanner, cosign, goreleaser, slsa-github-generator)
 - [X] T004 [P] Add `Makefile` with targets: `tools`, `build`, `test`, `coverage`, `lint`, `doc-lint`, `openapi-coverage`, `sensitive-lint`, `sensitive-lint-strict`, `vuln`, `testacc`, `release` (target stubs invoking the right tool); behavior matches `quickstart.md` §5
 - [X] T005 [P] Add `.golangci.yml` enabling `errcheck`, `govet`, `staticcheck`, `revive`, `paralleltest`, `tparallel`, `gosec`, `unparam`, with the `revive` `exported` rule enforced (SC-007)
-- [X] T006 [P] Add `.github/workflows/ci.yml` running `make lint`, `make test`, `make coverage`, `make openapi-coverage`, `make sensitive-lint-strict`, `make vuln` on every PR; matrix on Go 1.23 and 1.24
+- [X] T006 [P] Add `.github/workflows/ci.yml` running `make lint`, `make test`, `make coverage`, `make openapi-coverage`, `make sensitive-lint-strict`, `make vuln` on every PR; matrix on Go 1.23 and 1.24 _(superseded 2026-05: matrix narrowed to Go 1.26.x, the new project minimum — see CHANGELOG)_
 - [X] T007 [P] Add `.github/workflows/acceptance.yml` running `make testacc` on a nightly schedule and on `workflow_dispatch`, gated by repository secrets `NC2_API_KEY` / `NC2_KEY_ID` / `NC2_ISSUER`
 - [X] T008 [P] Add `.github/PULL_REQUEST_TEMPLATE.md` with the Constitution checklist (Library-First, TDD, Functional-Patterns boxes)
 - [X] T009 [P] Add `.githooks/pre-commit` shell script running `go test ./...` locally; document `git config core.hooksPath .githooks` in `quickstart.md` (already present) and `README.md`

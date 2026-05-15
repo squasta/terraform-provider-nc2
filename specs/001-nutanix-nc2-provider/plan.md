@@ -23,7 +23,7 @@ The MVP slice (US1) delivers organizations + cloud accounts; the next slice (US2
 
 ## Technical Context
 
-**Language/Version**: Go 1.24+ (latest stable supported by `terraform-plugin-framework`). Pinned in `go.mod`; CI matrix covers Go 1.24 and 1.23.
+**Language/Version**: Go 1.26.3 minimum (matches the `toolchain` directive in `go.mod`; raised from the original Go 1.24+ floor on 2026-05 to eliminate stdlib CVEs flagged by `osv-scanner` and to align with the `terraform-plugin-framework` v1.x supported toolchain). Pinned in `go.mod`'s `go` directive; CI matrix covers the project minimum (Go 1.26) and any newer GA Go release.
 
 **Primary Dependencies**:
 
@@ -170,7 +170,7 @@ specs/001-nutanix-nc2-provider/
 ```text
 terraform-provider-nc2/                      # repo root, same as this spec-kit project
 ├── main.go                                  # provider entry; wires terraform-plugin-framework
-├── go.mod / go.sum                          # Go 1.24+; minimal dependency set per Technical Context
+├── go.mod / go.sum                          # Go 1.26.3 minimum; minimal dependency set per Technical Context
 ├── openapi/
 │   └── openapi.json                         # authoritative API source (already present)
 ├── internal/                                # Go-module-enforced internal packages

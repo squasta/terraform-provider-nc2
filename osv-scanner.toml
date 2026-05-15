@@ -1,0 +1,23 @@
+# osv-scanner configuration for terraform-provider-nc2.
+#
+# Used by `.github/workflows/release.yml` (the FR-032a vulnerability
+# gate) and by anyone running `osv-scanner scan source --config=osv-scanner.toml .`
+# locally.
+#
+# The release pipeline only HARD-FAILS on HIGH/CRITICAL advisories
+# that are reachable from provider code. Use this file to record
+# accepted-risk advisories or vendor-issued false positives by ID.
+# Each suppression MUST include a justification and an expiry so that
+# we revisit it before releasing the next minor version.
+#
+# Example:
+#
+#   [[IgnoredVulns]]
+#   id = "GHSA-xxxx-yyyy-zzzz"
+#   ignoreUntil = 2026-12-31
+#   reason = "Reachable only from goreleaser tooling, not the provider runtime."
+#
+# Schema reference:
+#   https://google.github.io/osv-scanner/configuration/
+
+# (no current suppressions)

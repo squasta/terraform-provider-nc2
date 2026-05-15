@@ -10,7 +10,7 @@ This document records the Phase 0 research outputs. Every entry is structured as
 
 ## R-01: Terraform Plugin Framework version and Action support
 
-**Decision**: Build on `github.com/hashicorp/terraform-plugin-framework` v1.x (current GA), pinned to the latest published `v1.<latest>.<latest>` at first commit and updated via Dependabot. Use the framework's `action` package for the 8 non-CRUD operational endpoints (FR-016). Pin Go to 1.24+ to match the framework's supported toolchain.
+**Decision**: Build on `github.com/hashicorp/terraform-plugin-framework` v1.x (current GA), pinned to the latest published `v1.<latest>.<latest>` at first commit and updated via Dependabot. Use the framework's `action` package for the 8 non-CRUD operational endpoints (FR-016). Pin Go to 1.26.3+ in `go.mod` (originally Go 1.24+; raised on 2026-05 to align with `toolchain go1.26.3` and remove stdlib CVE noise from the release-pipeline vulnerability gate).
 
 **Rationale**:
 

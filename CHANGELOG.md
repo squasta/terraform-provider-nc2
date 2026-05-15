@@ -10,6 +10,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING (pre-1.0)**: Minimum Go version required to build the
+  provider is now **Go 1.26.3** (raised from `go 1.25.8`). The
+  `go.mod` `go` directive now matches the existing `toolchain
+  go1.26.3` directive, so consumers building from source with an
+  older Go release will see the standard `requires go >= 1.26.3`
+  error from the toolchain. Rationale: align the declared minimum
+  with the toolchain we actually use; remove stdlib CVEs that the
+  release-pipeline `osv-scanner` gate was flagging against the
+  older runtime; reduce the chance of subtle 1.26-only API usage
+  silently relying on the toolchain auto-download. CI's matrix has
+  been narrowed to `["1.26.x"]` to match.
 - **BREAKING (pre-1.0)**: Hibernate / resume (`desired_state`) is
   now AWS-only on `nc2_aws_cluster` (FR-012). The attribute has
   been removed from `nc2_azure_cluster` and `nc2_gcp_cluster`;
@@ -69,5 +80,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (FR-003c), the no-external-secret-store invariant (FR-001b),
   documentation coverage (FR-029), and exported-symbol doc-comment
   coverage (SC-007).
+
+### CI / Release pipeline
+
+- `.goreleaser.yml`: build matrix narrowed to an explicit
+  `targets:` list (`linux_amd64`, `linux_arm64`, `darwin_amd64`,
+  `darwin_arm64`, `windows_amd64`) — replaces the earlier
+  `goos × goarch + ignore` Cartesian product.
+- `.github/workflows/release.yml`:
+  - Added `workflow_dispatch` trigger so a failed release can be
+    rerun without re-tagging.
+  - Header comment refreshed to document the 5-target matrix and
+    the gating model (govulncheck strict, osv-scanner
+    HIGH/CRITICAL only).
+  - Bumped `GO_VERSION` to `1.26.x` (was `1.24`) to satisfy
+    `go.mod`'s `toolchain` directive and remove the
+    `file requires newer Go version` failure surfaced by
+    govulncheck on the older runtime.
+  - **Cosign step**: consolidated two duplicate `env:` blocks on
+    the `Sign release archives` step into a single block; the
+    duplicate keys had been rejected by GitHub's workflow parser
+    with `'env' is already defined`. Hardened
+    `gh release download` with `mkdir -p dist` and
+    `--pattern '*.zip'`.
+  - **FR-032a vulnerability gate** rewritten:
+    - `govulncheck ./...` is the strict reachability gate (any
+      reachable Go vulnerability fails the run).
+    - `osv-scanner scan source` now runs with `--call-analysis=go`
+      and writes JSON; a small Python post-processor then HARD-FAILS
+      only on `database_specific.severity ∈ {HIGH, CRITICAL}` and
+      drops entries marked as not-called by call-graph analysis.
+      Everything else is logged and uploaded as the
+      `osv-scanner-report` artifact (30-day retention).
+    - New `osv-scanner.toml` at the repo root carries
+      per-vulnerability suppressions (id + reason + `ignoreUntil`),
+      letting accepted-risk findings be silenced without editing
+      the workflow.
+- `.github/workflows/release-snapshot.yml` (new): runs
+  `goreleaser release --snapshot --clean --skip=publish,sign` on
+  every PR/`main` push, asserts each of the five expected zips is
+  produced, and uploads the snapshot as a 7-day artifact for
+  debugging. GPG / cosign / SLSA paths are deliberately not
+  exercised here.
 
 [Unreleased]: https://github.com/nutanix/terraform-provider-nc2/compare/HEAD...HEAD
