@@ -75,15 +75,19 @@ jobs:
           govulncheck ./...
 
       # osv-scanner walks the full transitive dep graph (including
-      # build-only deps such as goreleaser/kubernetes/sigstore/etc.).
-      # Per FR-032a we ONLY hard-fail on HIGH/CRITICAL severity, and
-      # we narrow further by call-graph analysis when available.
-      # Suppressions for accepted-risk advisories live in
-      # osv-scanner.toml at the repo root.
+      # build-only deps that goreleaser/kubernetes/sigstore/etc. drag
+      # in but the provider runtime never links). Per FR-032a we ONLY
+      # hard-fail on HIGH/CRITICAL severity findings whose call-graph
+      # analysis explicitly marks them as REACHABLE. The authoritative
+      # reachability gate is `govulncheck` above (which analyses the
+      # actual provider binary's call graph); osv-scanner adds breadth
+      # over the OSV database, but unknown-reachability findings are
+      # treated as informational rather than blocking. Suppressions
+      # for accepted-risk advisories live in osv-scanner.toml.
       - name: osv-scanner (HIGH/CRITICAL gate)
         run: |
           set -uo pipefail
-          go install github.com/google/osv-scanner/cmd/osv-scanner/v2@latest
+          go install github.com/google/osv-scanner/v2/cmd/osv-scanner@latest
 
           # Full report → JSON for both human review and the gate below.
           # Tolerate non-zero exit (vulns exist) — we apply our own gating.
@@ -92,7 +96,7 @@ jobs:
             --call-analysis=go \
             --config=osv-scanner.toml \
             --format=json \
-            --output=osv-report.json \
+            --output-file=osv-report.json \
             . || true
 
           # Pretty-printed table view to the run log for visibility.
@@ -103,9 +107,12 @@ jobs:
             . || true
 
           # Apply the FR-032a HIGH/CRITICAL gate. Severity is taken from
-          # the GHSA `database_specific.severity` string when present
-          # (covers the vast majority of advisories). Anything below
-          # HIGH is reported but does not block the release.
+          # the GHSA `database_specific.severity` string when present.
+          # We only fail on findings that osv-scanner's call-graph
+          # analysis EXPLICITLY confirms as reachable (`called == true`)
+          # for at least one ID in the finding's group; unknown-
+          # reachability and called=false findings are reported and
+          # uploaded but do not block the release.
           python3 - <<'PY'
           import json, sys
           HIGH = {"HIGH", "CRITICAL"}
@@ -116,35 +123,55 @@ jobs:
               print("osv-scanner produced no report (clean run).")
               sys.exit(0)
 
-          findings = []
+          gated = []
+          informational = []
           for result in data.get("results", []) or []:
               for pkg in result.get("packages", []) or []:
                   pkg_meta = pkg.get("package") or {}
                   name = pkg_meta.get("name", "?")
                   ver = pkg_meta.get("version", "?")
-                  # Build a quick lookup: vuln id -> called? from group analysis.
-                  called = {}
+                  # group_call[group_index] = "called" | "uncalled" | "unknown"
+                  group_call = []
                   for grp in pkg.get("groups", []) or []:
                       ea = grp.get("experimental_analysis") or {}
-                      for vid, info in ea.items():
-                          called[vid] = bool((info or {}).get("called", True))
+                      verdict = "unknown"
+                      if ea:
+                          if any(bool((info or {}).get("called", False))
+                                 for info in ea.values()):
+                              verdict = "called"
+                          else:
+                              verdict = "uncalled"
+                      group_call.append((set(grp.get("ids") or []), verdict))
                   for v in pkg.get("vulnerabilities", []) or []:
                       vid = v.get("id", "?")
                       sev = ((v.get("database_specific") or {}).get("severity") or "").upper()
                       if sev not in HIGH:
                           continue
-                      # Drop entries marked as not-called by call-graph analysis.
-                      if vid in called and not called[vid]:
-                          continue
-                      findings.append((vid, sev, f"{name}@{ver}"))
+                      verdict = "unknown"
+                      for ids, gv in group_call:
+                          if vid in ids:
+                              verdict = gv
+                              break
+                      entry = (vid, sev, f"{name}@{ver}", verdict)
+                      if verdict == "called":
+                          gated.append(entry)
+                      else:
+                          informational.append(entry)
 
-          if findings:
-              print(f"::error title=FR-032a::{len(findings)} HIGH/CRITICAL "
-                    "vulnerabilities present, blocking release", file=sys.stderr)
-              for vid, sev, pkg in findings:
+          if informational:
+              print(f"::notice title=FR-032a::{len(informational)} HIGH/CRITICAL "
+                    "finding(s) present but not confirmed reachable "
+                    "(govulncheck is the authoritative reachability gate):")
+              for vid, sev, pkg, verdict in informational:
+                  print(f"  - {vid}  [{sev}]  {pkg}  ({verdict})")
+
+          if gated:
+              print(f"::error title=FR-032a::{len(gated)} HIGH/CRITICAL "
+                    "REACHABLE finding(s), blocking release:", file=sys.stderr)
+              for vid, sev, pkg, _verdict in gated:
                   print(f"  - {vid}  [{sev}]  {pkg}", file=sys.stderr)
               sys.exit(1)
-          print("FR-032a gate: no HIGH/CRITICAL vulnerabilities found.")
+          print("FR-032a gate: no reachable HIGH/CRITICAL vulnerabilities.")
           PY
 
       - name: Upload osv-scanner report

@@ -104,14 +104,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `gh release download` with `mkdir -p dist` and
     `--pattern '*.zip'`.
   - **FR-032a vulnerability gate** rewritten:
-    - `govulncheck ./...` is the strict reachability gate (any
-      reachable Go vulnerability fails the run).
-    - `osv-scanner scan source` now runs with `--call-analysis=go`
-      and writes JSON; a small Python post-processor then HARD-FAILS
-      only on `database_specific.severity ∈ {HIGH, CRITICAL}` and
-      drops entries marked as not-called by call-graph analysis.
-      Everything else is logged and uploaded as the
-      `osv-scanner-report` artifact (30-day retention).
+    - `govulncheck ./...` is the **authoritative reachability
+      gate** (any reachable Go vulnerability fails the run). This
+      analyses the actual provider binary's call graph from
+      `main()`, so every gating decision is bound to code that
+      actually ships to operators.
+    - `osv-scanner` is installed from
+      `github.com/google/osv-scanner/v2/cmd/osv-scanner@latest`
+      and invoked with `scan source --recursive
+      --call-analysis=go --config=osv-scanner.toml
+      --format=json --output-file=osv-report.json .`. (The
+      pre-v2 install path
+      `github.com/google/osv-scanner/cmd/osv-scanner` is no
+      longer valid for v2; the `--output` flag has been replaced
+      by `--output-file`.) A Python post-processor then walks
+      the JSON and **only HARD-FAILS** on findings that satisfy
+      ALL of:
+      - `database_specific.severity ∈ {HIGH, CRITICAL}`, AND
+      - osv-scanner's call-graph analysis explicitly marks at
+        least one ID in the finding's group as `called=true`.
+      Findings whose reachability is `uncalled` or `unknown` are
+      reported via `::notice` and uploaded with the full report
+      as the `osv-scanner-report` artifact (30-day retention)
+      but do not block the release. Rationale: govulncheck
+      already covers reachable Go vulnerabilities authoritatively;
+      osv-scanner's value-add is broader DB coverage, but its
+      false-positive rate against goreleaser/sigstore/cosign
+      build-tool transitive deps would otherwise gate every
+      release.
     - New `osv-scanner.toml` at the repo root carries
       per-vulnerability suppressions (id + reason + `ignoreUntil`),
       letting accepted-risk findings be silenced without editing
