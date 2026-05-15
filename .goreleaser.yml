@@ -1,16 +1,20 @@
 # GoReleaser configuration for terraform-provider-nc2.
 #
-# This file produces:
-#   - Provider binaries for the Terraform Registry-required matrix
-#     (linux/darwin/windows/freebsd × amd64/arm64/386).
-#   - SHA256SUMS aggregated checksum file (GPG-signed by the
-#     `signs` block below).
-#   - Per-artifact archives in the layout the Terraform Registry
-#     expects: terraform-provider-nc2_<version>_<os>_<arch>.zip.
+# Build matrix (explicit, see `targets:` below):
+#   - linux   / amd64
+#   - linux   / arm64
+#   - darwin  / amd64
+#   - darwin  / arm64
+#   - windows / amd64
 #
-# Cosign keyless signatures and SLSA provenance are produced by
-# .github/workflows/release.yml (out-of-band of this file). See
-# FR-032 / FR-032a / FR-032b for the supply-chain requirements.
+# Each target produces a Terraform-Registry-shaped zip archive
+# named `terraform-provider-nc2_<version>_<os>_<arch>.zip`, plus
+# an aggregated SHA256SUMS file that the `signs:` block GPG-signs.
+#
+# Cosign keyless signatures and SLSA Level 3 provenance are
+# produced by `.github/workflows/release.yml` out of band, against
+# the artifacts this file emits. See FR-032 / FR-032a / FR-032b
+# for the supply-chain requirements.
 
 version: 2
 
@@ -30,22 +34,15 @@ builds:
       - -X 'github.com/nutanix/terraform-provider-nc2/internal/provider.version={{ .Version }}'
     env:
       - CGO_ENABLED=0
-    goos:
-      - linux
-      - darwin
-      - windows
-      - freebsd
-    goarch:
-      - amd64
-      - arm64
-      - "386"
-    ignore:
-      - goos: darwin
-        goarch: "386"
-      - goos: windows
-        goarch: arm64
-      - goos: freebsd
-        goarch: arm64
+    # Explicit target list (replaces goos × goarch + ignores). Only
+    # these five OS/arch pairs are released; do not add new ones
+    # without coordinating with the Registry publishing key.
+    targets:
+      - linux_amd64
+      - linux_arm64
+      - darwin_amd64
+      - darwin_arm64
+      - windows_amd64
     mod_timestamp: '{{ .CommitTimestamp }}'
 
 archives:

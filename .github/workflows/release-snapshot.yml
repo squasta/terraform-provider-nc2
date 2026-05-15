@@ -1,0 +1,67 @@
+name: release-snapshot
+
+# PR-side guard: runs `goreleaser release --snapshot` on every push
+# to `main` and on every pull request. It exercises the full
+# 5-target build matrix declared in `.goreleaser.yml` (linux amd64,
+# linux arm64, darwin amd64, darwin arm64, windows amd64) without
+# publishing anything, so config-level breakage is caught long
+# before a release tag is pushed.
+#
+# This workflow does NOT touch GPG keys, cosign, or the SLSA
+# generator — those run only from `.github/workflows/release.yml`
+# under the real release-tag trigger.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  GO_VERSION: '1.24'
+
+jobs:
+  snapshot:
+    name: GoReleaser snapshot (matrix dry-run)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+      - name: GoReleaser snapshot
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          # `--snapshot` skips signing and publishing; `--clean`
+          # removes any prior `dist/` directory; `--skip` opts out
+          # of publish + sign explicitly so the local snapshot
+          # stays GPG-key-free.
+          args: release --snapshot --clean --skip=publish,sign
+      - name: Inspect produced artifacts
+        run: |
+          set -euo pipefail
+          ls -lh dist/
+          echo "---"
+          # Sanity-check that every expected target is present.
+          for sfx in linux_amd64 linux_arm64 darwin_amd64 darwin_arm64 windows_amd64; do
+            f=$(ls dist/*_${sfx}.zip 2>/dev/null || true)
+            if [ -z "$f" ]; then
+              echo "missing snapshot artifact for ${sfx}" >&2
+              exit 1
+            fi
+            echo "ok: $f"
+          done
+      - name: Upload snapshot artifacts (debugging aid)
+        uses: actions/upload-artifact@v4
+        with:
+          name: terraform-provider-nc2-snapshot
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7

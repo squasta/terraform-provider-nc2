@@ -1,23 +1,52 @@
 name: release
 
-# Triggered on tag push of the form `vMAJOR.MINOR.PATCH` (Semver). The
-# pipeline produces:
-#   1. GoReleaser-built provider binaries + SHA256SUMS (GPG-signed).
-#   2. Cosign keyless signatures over every released artifact.
-#   3. SLSA Level 3 provenance via slsa-github-generator.
-#   4. govulncheck + osv-scanner reports; HIGH/CRITICAL CVEs HARD-FAIL
-#      the workflow per FR-032a.
+# GoReleaser-driven release pipeline for terraform-provider-nc2.
 #
-# The combination satisfies FR-032 (signing) and FR-032b (attestation).
+# Trigger
+# -------
+#   - `push` of a tag matching `vMAJOR.MINOR.PATCH` (Semver) → full
+#     release: build, sign, attest, publish a draft GitHub release.
+#   - `workflow_dispatch` (manual) → same as the tag push, useful
+#     for re-running a release that failed mid-pipeline.
+#
+# What the pipeline produces
+# --------------------------
+# For each tag, the goreleaser job (driven by `.goreleaser.yml`)
+# builds one zip per supported target:
+#
+#   | Target          | Archive name suffix       |
+#   |-----------------|---------------------------|
+#   | linux / amd64   | `_linux_amd64.zip`        |
+#   | linux / arm64   | `_linux_arm64.zip`        |
+#   | darwin / amd64  | `_darwin_amd64.zip`       |
+#   | darwin / arm64  | `_darwin_arm64.zip`       |
+#   | windows / amd64 | `_windows_amd64.zip`      |
+#
+# Plus an aggregated `SHA256SUMS` file, GPG-signed (`.sig`) by the
+# release-signing key loaded from `GPG_PRIVATE_KEY` /
+# `GPG_PASSPHRASE` repository secrets.
+#
+# Three downstream jobs add supply-chain attestations:
+#   1. `vuln`            — govulncheck + osv-scanner. HIGH/CRITICAL
+#                          findings hard-fail the workflow per
+#                          FR-032a, before any binaries are built.
+#   2. `cosign-sign`     — keyless cosign signatures over every
+#                          archive (OIDC-based, no key material).
+#   3. `slsa-provenance` — SLSA Level 3 build provenance via
+#                          slsa-github-generator.
+#
+# The combination satisfies FR-032 (signing) and FR-032b
+# (attestation).
 
 on:
   push:
     tags:
       - 'v*.*.*'
+  workflow_dispatch: {}
 
 permissions:
-  contents: write   # for GitHub release create
-  id-token: write   # for cosign keyless signing via OIDC
+  contents: write       # for GitHub release create / asset upload
+  id-token: write       # for cosign keyless signing via OIDC
   packages: write
   attestations: write
 
@@ -43,7 +72,7 @@ jobs:
           osv-scanner --recursive .
 
   goreleaser:
-    name: GoReleaser
+    name: GoReleaser (5-target build matrix)
     runs-on: ubuntu-latest
     needs: vuln
     outputs:
@@ -51,6 +80,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Fetch full history so GoReleaser can derive the
+          # changelog from `git log` between tags.
           fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
@@ -75,8 +106,10 @@ jobs:
           set -euo pipefail
           cd dist
           # Aggregate every release artifact into a base64-encoded
-          # multi-line string the SLSA generator consumes.
-          HASHES=$(sha256sum *.zip *.json | base64 -w0)
+          # multi-line string the SLSA generator consumes. The
+          # SHA256SUMS file itself is included so the provenance
+          # covers it as well.
+          HASHES=$(sha256sum *.zip *SHA256SUMS* | base64 -w0)
           echo "hashes=$HASHES" >> "$GITHUB_OUTPUT"
 
   cosign-sign:
@@ -89,11 +122,13 @@ jobs:
       - name: Sign release archives
         env:
           COSIGN_EXPERIMENTAL: "true"
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           # Re-fetch artifacts from the GitHub release so we sign
           # the same bytes operators will download.
-          gh release download "${GITHUB_REF#refs/tags/}" --dir dist
+          mkdir -p dist
+          gh release download "${GITHUB_REF#refs/tags/}" --dir dist --pattern '*.zip'
           cd dist
           for f in *.zip; do
             cosign sign-blob \
@@ -104,8 +139,6 @@ jobs:
               "${f}"
           done
           gh release upload "${GITHUB_REF#refs/tags/}" *.sig *.pem *.cosign.bundle
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   slsa-provenance:
     name: SLSA Level 3 provenance
